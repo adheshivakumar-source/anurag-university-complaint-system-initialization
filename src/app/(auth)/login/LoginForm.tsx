@@ -43,6 +43,10 @@ const FIREBASE_ERROR_MESSAGES: Record<string, string> = {
   "auth/network-request-failed":
     "Network error. Please check your connection and try again.",
   "auth/invalid-email": "The email address format is invalid.",
+  "auth/operation-not-allowed":
+    "Email/Password sign-in is not enabled for this project. Contact IT support.",
+  "auth/configuration-not-found":
+    "Authentication is not configured. Contact IT support.",
 };
 
 export function LoginForm({ redirectTo, initialError }: LoginFormProps) {
@@ -80,6 +84,10 @@ export function LoginForm({ redirectTo, initialError }: LoginFormProps) {
     } catch (error: unknown) {
       const firebaseError = error as { code?: string; message?: string };
       const code = firebaseError.code ?? "";
+      // Dev-only diagnostic: logs error code only — never logs passwords or tokens
+      if (process.env.NODE_ENV === "development") {
+        console.error("[AU-CTS Auth] Firebase sign-in error code:", code);
+      }
       setServerError(
         FIREBASE_ERROR_MESSAGES[code] ??
           firebaseError.message ??

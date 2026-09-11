@@ -30,7 +30,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="h-full">
+    <html lang="en" className="h-full" data-scroll-behavior="smooth">
       <head>
         {/* Google Fonts — Source Serif 4 + Public Sans for institutional typography */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
