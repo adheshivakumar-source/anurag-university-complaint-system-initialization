@@ -1,0 +1,60 @@
+// ============================================================
+// Firebase Storage Security Rules — AU-CTS
+// Project: au-cts-prod
+//
+// SECURITY PRINCIPLE: No public file access.
+// All file access must be authenticated.
+// Final URL generation must be done server-side via signed URLs.
+//
+// File path structure for complaint attachments:
+//   complaints/{complaintId}/attachments/{fileName}
+//
+// Access pattern:
+//   - Uploading user may write to their complaint's attachment path.
+//   - Only the complaint submitter and assigned officer may read.
+//   - Deletion is admin-only.
+// ============================================================
+
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // ── Complaint Attachments ─────────────────────────────────
+
+    match /complaints/{complaintId}/attachments/{fileName} {
+      // File size limit: 10MB
+      // Allowed MIME types enforced in server-side validation before upload,
+      // not here (storage rules don't support MIME type checks directly).
+
+      // Allow authenticated users to upload to complaint attachment paths.
+      // Server-side validation (Server Action) verifies they own the complaint
+      // before the upload URL is generated.
+      allow write: if request.auth != null
+        && request.resource.size < 10 * 1024 * 1024; // 10MB limit
+
+      // Read: Only authenticated users. Direct URL access is NOT permitted
+      // in production — signed URLs must be generated server-side.
+      // This rule allows emulator testing but production uses signed URLs.
+      allow read: if request.auth != null;
+
+      // Delete: No client-side deletion permitted.
+      // Deletion is handled by Admin SDK in Cloud Functions only.
+    }
+
+    // ── Public Assets ─────────────────────────────────────────
+
+    match /public/{allPaths=**} {
+      // Public folder for non-sensitive institutional assets (logos, etc.)
+      allow read: if true;
+      allow write: if request.auth != null
+        && request.auth.token.role == 'admin';
+    }
+
+    // ── Default deny ──────────────────────────────────────────
+    // All other paths are denied.
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

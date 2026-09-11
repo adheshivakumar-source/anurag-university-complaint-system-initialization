@@ -1,0 +1,175 @@
+rules_version = '2';
+// ============================================================
+// Firestore Security Rules — AU-CTS
+// Project: au-cts-prod
+//
+// SECURITY PRINCIPLE: Deny by default.
+// Only explicit allow rules grant access.
+// The Firebase Admin SDK (used in Server Actions and Cloud Functions)
+// bypasses these rules entirely — authorization must be implemented
+// separately in server-side code.
+//
+// Role system: Roles are set as Firebase Custom Claims by the Admin SDK.
+// Custom claims are embedded in the ID token and accessible via
+// request.auth.token.role in rules.
+//
+// RULE HIERARCHY:
+//   1. Authenticated only (request.auth != null)
+//   2. Ownership (request.auth.uid == resource data field)
+//   3. Role-based (request.auth.token.role)
+//   4. Admin override (role == 'admin')
+// ============================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helper Functions ────────────────────────────────────
+
+    /** Is the requesting user authenticated? */
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    /** Is the requesting user the specified UID? */
+    function isUser(uid) {
+      return isAuthenticated() && request.auth.uid == uid;
+    }
+
+    /** Does the authenticated user have the specified role? */
+    function hasRole(role) {
+      return isAuthenticated() && request.auth.token.role == role;
+    }
+
+    /** Is the authenticated user a system administrator? */
+    function isAdmin() {
+      return hasRole('admin');
+    }
+
+    /** Is the authenticated user a department officer? */
+    function isOfficer() {
+      return hasRole('department_officer');
+    }
+
+    /** Is the authenticated user a submitter (student/faculty/staff)? */
+    function isSubmitter() {
+      return isAuthenticated() && (
+        hasRole('student') ||
+        hasRole('faculty') ||
+        hasRole('staff')
+      );
+    }
+
+    /** Is the incoming data for a valid complaint status? */
+    function isValidStatus(status) {
+      return status in [
+        'submitted', 'pending', 'in_review', 'resolved',
+        'closed', 'reopened', 'escalated', 'rejected', 'duplicate'
+      ];
+    }
+
+    /** Is the incoming data for a valid complaint category? */
+    function isValidCategory(category) {
+      return category in [
+        'hostel', 'transport', 'classroom', 'lab', 'maintenance', 'academic'
+      ];
+    }
+
+    /** Is the incoming data for a valid priority? */
+    function isValidPriority(priority) {
+      return priority in ['low', 'medium', 'high', 'critical'];
+    }
+
+    // ── /users Collection ────────────────────────────────────
+
+    match /users/{userId} {
+      // Users can read their own profile.
+      // Admins can read all profiles.
+      allow read: if isUser(userId) || isAdmin() || isOfficer();
+
+      // Only admins can write user documents (role assignment, deactivation).
+      // User self-update is handled server-side for safety.
+      allow write: if isAdmin();
+    }
+
+    // ── /complaints Collection ───────────────────────────────
+
+    match /complaints/{complaintId} {
+      // CREATE: Only authenticated submitters (student/faculty/staff) may create.
+      // They must set submittedBy to their own UID.
+      // The Server Action validates and enriches the data before Firestore write.
+      allow create: if isSubmitter()
+        && request.resource.data.submittedBy == request.auth.uid
+        && isValidCategory(request.resource.data.category)
+        && isValidPriority(request.resource.data.priority)
+        && isValidStatus(request.resource.data.status)
+        && request.resource.data.status == 'submitted';
+
+      // READ: Submitter sees their own complaints.
+      // Officers see complaints in their assigned department.
+      // Admins see all.
+      allow read: if isAuthenticated() && (
+        isAdmin() ||
+        resource.data.submittedBy == request.auth.uid ||
+        (isOfficer() && resource.data.assignedTo == request.auth.uid)
+      );
+
+      // UPDATE: Officers may update assigned complaints (status changes).
+      // Admins may update any complaint.
+      // Submitters may NOT directly update complaints (only via Server Action).
+      allow update: if isAdmin() ||
+        (isOfficer() && resource.data.assignedTo == request.auth.uid);
+
+      // DELETE: No one may delete complaints. Admin can only mark as rejected/duplicate.
+      allow delete: if false;
+
+      // ── /complaints/{id}/audit Sub-collection ─────────────
+      match /audit/{auditId} {
+        // Audit records: readable by admins and the assigned officer only.
+        // Submitters may not read audit trails.
+        allow read: if isAdmin() ||
+          (isOfficer() && get(/databases/$(database)/documents/complaints/$(complaintId)).data.assignedTo == request.auth.uid);
+
+        // Audit records must only be written by Cloud Functions / Admin SDK.
+        // Direct client writes are prohibited.
+        allow write: if false;
+      }
+    }
+
+    // ── /routingRules Collection ─────────────────────────────
+
+    match /routingRules/{category} {
+      // Only admins may read or modify routing rules.
+      allow read, write: if isAdmin();
+    }
+
+    // ── /departments Collection ──────────────────────────────
+
+    match /departments/{departmentId} {
+      // All authenticated users may read department info (for display purposes).
+      allow read: if isAuthenticated();
+
+      // Only admins may manage departments.
+      allow write: if isAdmin();
+    }
+
+    // ── /notifications Collection ────────────────────────────
+
+    match /notifications/{notificationId} {
+      // Users may read their own notifications.
+      allow read: if isAuthenticated() &&
+        resource.data.userId == request.auth.uid;
+
+      // Users may mark their own notifications as read.
+      allow update: if isAuthenticated() &&
+        resource.data.userId == request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']);
+
+      // Notifications are created by Cloud Functions only.
+      allow create, delete: if false;
+    }
+
+    // ── Default deny ─────────────────────────────────────────
+    // Any collection not matched above is denied implicitly.
+    // This is the 'deny by default' behavior of Firestore rules.
+  }
+}

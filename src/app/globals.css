@@ -1,0 +1,143 @@
+/* src/app/globals.css
+ * ============================================================
+ * AU-CTS Global Styles — Tailwind CSS v4
+ *
+ * Tailwind v4 uses CSS-first configuration.
+ * Design tokens are defined here using the @theme directive.
+ * Do NOT use a tailwind.config.ts for theme customization in v4.
+ *
+ * AU Visual Identity:
+ *   Primary:   Maroon  — institutional authority
+ *   Secondary: Navy    — professional depth
+ *   Accent:    Gold    — achievement, highlights
+ *   Neutral:   Slate   — content, backgrounds
+ * ============================================================ */
+
+@import "tailwindcss";
+
+@theme {
+  /* ── Anurag University Brand Colors ── */
+
+  /* Maroon — Primary brand color, headers, primary actions */
+  --color-au-maroon-50: oklch(0.97 0.01 10);
+  --color-au-maroon-100: oklch(0.93 0.03 10);
+  --color-au-maroon-200: oklch(0.86 0.06 10);
+  --color-au-maroon-300: oklch(0.75 0.10 10);
+  --color-au-maroon-400: oklch(0.61 0.14 10);
+  --color-au-maroon-500: oklch(0.47 0.17 10);
+  --color-au-maroon-600: oklch(0.39 0.15 10);
+  --color-au-maroon-700: oklch(0.33 0.13 10);
+  --color-au-maroon-800: oklch(0.26 0.10 10);
+  --color-au-maroon-900: oklch(0.20 0.07 10);
+  --color-au-maroon-950: oklch(0.13 0.04 10);
+
+  /* Navy — Secondary brand color, sidebar, structural elements */
+  --color-au-navy-50: oklch(0.97 0.01 245);
+  --color-au-navy-100: oklch(0.93 0.03 245);
+  --color-au-navy-200: oklch(0.85 0.06 245);
+  --color-au-navy-300: oklch(0.72 0.10 245);
+  --color-au-navy-400: oklch(0.57 0.14 245);
+  --color-au-navy-500: oklch(0.42 0.17 245);
+  --color-au-navy-600: oklch(0.34 0.15 245);
+  --color-au-navy-700: oklch(0.28 0.12 245);
+  --color-au-navy-800: oklch(0.22 0.09 245);
+  --color-au-navy-900: oklch(0.17 0.06 245);
+  --color-au-navy-950: oklch(0.11 0.04 245);
+
+  /* Gold — Accent, badges, highlights, rankings */
+  --color-au-gold-50: oklch(0.98 0.02 80);
+  --color-au-gold-100: oklch(0.95 0.05 80);
+  --color-au-gold-200: oklch(0.89 0.09 80);
+  --color-au-gold-300: oklch(0.82 0.13 80);
+  --color-au-gold-400: oklch(0.74 0.16 80);
+  --color-au-gold-500: oklch(0.64 0.17 80);
+  --color-au-gold-600: oklch(0.54 0.15 80);
+  --color-au-gold-700: oklch(0.44 0.12 80);
+  --color-au-gold-800: oklch(0.35 0.09 80);
+  --color-au-gold-900: oklch(0.27 0.06 80);
+  --color-au-gold-950: oklch(0.18 0.04 80);
+
+  /* ── Semantic Color Aliases ── */
+  --color-primary: var(--color-au-maroon-700);
+  --color-primary-hover: var(--color-au-maroon-800);
+  --color-primary-light: var(--color-au-maroon-50);
+  --color-primary-foreground: oklch(1 0 0);
+
+  --color-secondary: var(--color-au-navy-800);
+  --color-secondary-hover: var(--color-au-navy-900);
+  --color-secondary-light: var(--color-au-navy-50);
+  --color-secondary-foreground: oklch(1 0 0);
+
+  --color-accent: var(--color-au-gold-500);
+  --color-accent-foreground: oklch(0.15 0 0);
+
+  /* Status colors for complaint badges */
+  --color-status-submitted: oklch(0.60 0.12 245);
+  --color-status-pending: oklch(0.60 0.15 60);
+  --color-status-in-review: oklch(0.55 0.16 245);
+  --color-status-resolved: oklch(0.55 0.14 140);
+  --color-status-closed: oklch(0.55 0.02 0);
+  --color-status-escalated: oklch(0.55 0.17 30);
+  --color-status-reopened: oklch(0.55 0.17 300);
+  --color-status-rejected: oklch(0.50 0.16 10);
+  --color-status-duplicate: oklch(0.55 0.10 60);
+
+  /* Priority colors */
+  --color-priority-low: oklch(0.55 0.14 140);
+  --color-priority-medium: oklch(0.60 0.15 60);
+  --color-priority-high: oklch(0.55 0.17 30);
+  --color-priority-critical: oklch(0.50 0.16 10);
+
+  /* ── Typography ── */
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Code", monospace;
+
+  /* ── Spacing Overrides ── */
+  --spacing-sidebar: 16rem; /* 256px — main sidebar width */
+  --spacing-header: 4rem;   /* 64px — top header height */
+
+  /* ── Border Radius ── */
+  --radius-card: 0.5rem;
+  --radius-badge: 0.25rem;
+}
+
+/* ── Base Styles ── */
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: oklch(0.98 0.005 245);
+    color: oklch(0.15 0.01 245);
+    line-height: 1.6;
+  }
+
+  /* Focus ring — accessible, brand-aligned */
+  :focus-visible {
+    outline: 2px solid var(--color-au-maroon-600);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  /* Reduce motion for users who prefer it */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
