@@ -9,6 +9,7 @@ import type { SessionUser } from "@/types";
 import { ROLE_LABELS } from "@/types";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { UniversityLogo } from "@/components/ui/UniversityLogo";
 
 interface AppHeaderProps {
   user: SessionUser;
@@ -25,11 +26,9 @@ export function AppHeader({ user }: AppHeaderProps) {
         Skip to main content
       </a>
 
-      {/* Left: Mobile branding */}
+      {/* Left: Mobile branding — official logo on mobile */}
       <div className="flex items-center gap-3 lg:hidden">
-        <div className="flex h-7 w-7 items-center justify-center rounded bg-[#6B1724] text-xs font-bold text-white">
-          AU
-        </div>
+        <UniversityLogo variant="dark" size="sm" showSubtitle={false} />
         <span className="text-sm font-semibold text-[#0F172A]">AU-CTS</span>
       </div>
 

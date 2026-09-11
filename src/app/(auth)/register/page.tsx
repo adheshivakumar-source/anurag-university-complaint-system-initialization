@@ -3,8 +3,10 @@
 // Provides institutional onboarding with role selection
 
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { RegisterForm } from "./RegisterForm";
+import { UniversityLogo } from "@/components/ui/UniversityLogo";
 
 export const metadata: Metadata = {
   title: "Register Account",
@@ -15,34 +17,28 @@ export const metadata: Metadata = {
 export default function RegisterPage() {
   return (
     <div className="flex min-h-screen">
-      {/* ── Left Panel: University Identity ── */}
-      <div className="hidden lg:flex lg:w-2/5 xl:w-1/3 flex-col bg-[#6B1724] text-white p-10 relative overflow-hidden">
-        {/* Institutional Pattern Overlay */}
+      {/* ── Left Panel: Campus Photography Identity ── */}
+      <div className="hidden lg:flex lg:w-2/5 xl:w-1/3 flex-col text-white relative overflow-hidden">
+        {/* Campus aerial background — same treatment as login for cohesion */}
+        <Image
+          src="/images/au/campus_aerial.jpg"
+          alt="Anurag University campus aerial view"
+          fill
+          className="object-cover object-center"
+          priority
+          sizes="40vw"
+        />
+        {/* Maroon overlay */}
         <div
-          className="absolute inset-0 opacity-5"
-          style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-          }}
+          className="absolute inset-0"
+          style={{ background: "rgba(107,23,36,0.82)" }}
           aria-hidden="true"
         />
 
-        <div className="relative z-10 flex flex-col h-full">
-          {/* Logo / Institution Mark */}
-          <div className="flex items-center gap-3 mb-10">
-            <div
-              className="flex h-12 w-12 items-center justify-center rounded border-2 border-white/30 bg-white/10 text-lg font-bold tracking-tight"
-              aria-label="Anurag University logo placeholder"
-            >
-              AU
-            </div>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-widest text-white/70">
-                Anurag University
-              </p>
-              <p className="text-sm font-semibold text-white">
-                Institutional Onboarding
-              </p>
-            </div>
+        <div className="relative z-10 flex flex-col h-full p-10">
+          {/* Logo */}
+          <div className="mb-10">
+            <UniversityLogo variant="light" size="lg" showSubtitle />
           </div>
 
           {/* Registration Information */}
@@ -58,12 +54,12 @@ export default function RegisterPage() {
               to file and monitor university grievances.
             </p>
 
-            <div className="my-8 h-px w-16 bg-white/25" aria-hidden="true" />
+            <div className="my-8 h-px w-16 bg-white/30" aria-hidden="true" />
 
             <div className="flex flex-col gap-4 text-xs text-white/80">
-              <div className="rounded bg-white/10 p-3 border border-white/15">
+              <div className="rounded-lg bg-white/10 p-3 border border-white/15">
                 <p className="font-semibold text-white mb-1">
-                  🎓 Role Access Policies:
+                  Role Access Policies
                 </p>
                 <p className="leading-relaxed">
                   Department Officer and Administrator privileges cannot be
@@ -89,13 +85,11 @@ export default function RegisterPage() {
       </div>
 
       {/* ── Right Panel: Registration Form ── */}
-      <div className="flex-1 flex flex-col items-center justify-center bg-[#F8F9FF] px-6 py-12">
+      <div className="flex-1 flex flex-col items-center justify-center bg-[#F8FAFC] px-6 py-12">
         <div className="w-full max-w-md">
           {/* Mobile Header */}
           <div className="flex items-center gap-2 mb-6 lg:hidden">
-            <div className="flex h-8 w-8 items-center justify-center rounded bg-[#6B1724] text-xs font-bold text-white">
-              AU
-            </div>
+            <UniversityLogo variant="dark" size="sm" showSubtitle={false} />
             <span className="text-sm font-semibold text-[#0F172A]">
               Anurag University · AU-CTS
             </span>
@@ -114,7 +108,7 @@ export default function RegisterPage() {
           </div>
 
           {/* Registration Card */}
-          <div className="rounded bg-white border border-[#E2E8F0] p-6 shadow-[0_1px_3px_0_rgba(15,23,42,0.06),0_1px_2px_-1px_rgba(15,23,42,0.04)]">
+          <div className="rounded-lg bg-white border border-[#E2E8F0] p-6 shadow-sm">
             <RegisterForm />
           </div>
 

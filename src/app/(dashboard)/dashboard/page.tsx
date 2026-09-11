@@ -1,7 +1,8 @@
 // src/app/(dashboard)/dashboard/page.tsx
-// Main dashboard page — role-aware overview
+// Main dashboard page — role-aware overview with campus imagery
 
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { requireAuthenticatedUser } from "@/lib/auth/authorization";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
@@ -23,12 +24,30 @@ export default async function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Page header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
+      {/* ── Campus Hero Banner ── */}
+      <div className="relative w-full h-36 rounded-xl overflow-hidden flex-shrink-0">
+        <Image
+          src="/images/au/campus_building.jpg"
+          alt="Anurag University campus"
+          fill
+          className="object-cover object-center"
+          priority
+          sizes="(max-width: 1280px) 100vw, 1280px"
+        />
+        {/* Gradient overlay — right edge fades to navy for text */}
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              "linear-gradient(90deg, rgba(30,41,59,0.70) 0%, rgba(30,41,59,0.45) 60%, rgba(30,41,59,0.15) 100%)",
+          }}
+          aria-hidden="true"
+        />
+        {/* Content overlay */}
+        <div className="absolute inset-0 flex flex-col justify-center px-7">
           <div className="flex items-center gap-3">
             <h1
-              className="text-2xl font-bold text-[#0F172A]"
+              className="text-2xl font-bold text-white"
               style={{ fontFamily: "'Source Serif 4', serif" }}
             >
               Welcome, {profile.displayName}
@@ -45,12 +64,13 @@ export default async function DashboardPage() {
               {ROLE_LABELS[profile.role]}
             </Badge>
           </div>
-          <p className="text-sm text-[#64748B] mt-1">
-            Anurag University Grievance & Complaint Tracking System
+          <p className="text-sm text-white/70 mt-1">
+            Anurag University — Complaint Tracking System
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        {/* Action buttons — top right of banner */}
+        <div className="absolute top-4 right-5 flex items-center gap-2">
           {isAdmin && (
             <Link href="/admin/users">
               <Button variant="primary" size="sm">
@@ -58,7 +78,6 @@ export default async function DashboardPage() {
               </Button>
             </Link>
           )}
-
           {isOfficer && (
             <Link href="/officer">
               <Button variant="primary" size="sm">
@@ -66,7 +85,6 @@ export default async function DashboardPage() {
               </Button>
             </Link>
           )}
-
           <Link href="/profile">
             <Button variant="secondary" size="sm">
               My Profile
@@ -75,7 +93,7 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* Role-Specific Overview Panels */}
+      {/* ── Role-Specific Overview Panels ── */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* User Identity Card */}
         <Card>
@@ -184,6 +202,23 @@ export default async function DashboardPage() {
                   <Link href="/admin/users">
                     <Button variant="secondary" size="sm">
                       User Directory
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            )}
+
+            {/* Faculty/Staff fallback */}
+            {!isStudent && !isOfficer && !isAdmin && (
+              <div className="flex flex-col gap-3">
+                <p>
+                  As a university member, you can file and track complaints across
+                  all operational categories with real-time status updates.
+                </p>
+                <div className="flex gap-3 pt-2">
+                  <Link href="/complaints">
+                    <Button variant="secondary" size="sm">
+                      View My Complaints
                     </Button>
                   </Link>
                 </div>

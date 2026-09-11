@@ -5,6 +5,7 @@
 import Link from "next/link";
 import type { SessionUser } from "@/types";
 import { USER_ROLES } from "@/types";
+import { UniversityLogo } from "@/components/ui/UniversityLogo";
 
 interface NavItem {
   label: string;
@@ -24,8 +25,6 @@ const HomeIcon = () => (
     <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
   </svg>
 );
-
-
 
 const UsersIcon = () => (
   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -93,19 +92,11 @@ export function AppSidebar({ user }: AppSidebarProps) {
 
   return (
     <aside className="hidden lg:flex w-64 flex-col bg-[#1E293B] text-white flex-shrink-0">
-      {/* Logo area */}
-      <div className="flex items-center gap-3 px-5 py-4 border-b border-white/10">
-        <div className="flex h-8 w-8 items-center justify-center rounded bg-[#6B1724] text-xs font-bold text-white flex-shrink-0">
-          AU
-        </div>
-        <div className="min-w-0">
-          <p className="text-xs font-semibold text-white leading-tight truncate">
-            Anurag University
-          </p>
-          <p className="text-[10px] text-white/50 leading-tight truncate">
-            Complaint Tracking System
-          </p>
-        </div>
+      {/* Logo area — official AU emblem */}
+      <div className="px-5 py-4 border-b border-white/10">
+        <Link href="/dashboard" aria-label="AU-CTS Dashboard">
+          <UniversityLogo variant="light" size="sm" showSubtitle />
+        </Link>
       </div>
 
       {/* Navigation */}
@@ -115,7 +106,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
             <li key={item.href}>
               <Link
                 href={item.href}
-                className="flex items-center gap-3 rounded px-3 py-2 text-sm text-white/70 hover:bg-white/10 hover:text-white transition-colors duration-100 focus-visible:outline-2 focus-visible:outline-white"
+                className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-white/70 hover:bg-white/10 hover:text-white transition-colors duration-100 focus-visible:outline-2 focus-visible:outline-white"
               >
                 <span className="flex-shrink-0 text-white/50">{item.icon}</span>
                 {item.label}
@@ -129,7 +120,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
       <div className="border-t border-white/10 px-4 py-3">
         <Link
           href="/profile"
-          className="flex items-center gap-3 hover:bg-white/5 p-1 rounded transition-colors"
+          className="flex items-center gap-3 hover:bg-white/5 p-1 rounded-md transition-colors"
         >
           <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#6B1724] text-xs font-semibold text-white flex-shrink-0">
             {user.displayName.charAt(0).toUpperCase()}

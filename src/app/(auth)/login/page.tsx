@@ -3,7 +3,9 @@
 // Handles redirectTo and error query params
 
 import type { Metadata } from "next";
+import Image from "next/image";
 import { LoginForm } from "./LoginForm";
+import { UniversityLogo } from "@/components/ui/UniversityLogo";
 
 export const metadata: Metadata = {
   title: "Sign In",
@@ -34,34 +36,28 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 
   return (
     <div className="flex min-h-screen">
-      {/* ── Left Panel: University Identity ── */}
-      <div className="hidden lg:flex lg:w-2/5 xl:w-1/3 flex-col bg-[#6B1724] text-white p-10 relative overflow-hidden">
-        {/* Subtle texture overlay */}
+      {/* ── Left Panel: Campus Photography Identity ── */}
+      <div className="hidden lg:flex lg:w-2/5 xl:w-1/3 flex-col text-white relative overflow-hidden">
+        {/* Campus aerial background */}
+        <Image
+          src="/images/au/campus_aerial.jpg"
+          alt="Anurag University campus aerial view"
+          fill
+          className="object-cover"
+          priority
+          sizes="40vw"
+        />
+        {/* Maroon overlay for readability */}
         <div
-          className="absolute inset-0 opacity-5"
-          style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-          }}
+          className="absolute inset-0"
+          style={{ background: "rgba(107,23,36,0.82)" }}
           aria-hidden="true"
         />
 
-        <div className="relative z-10 flex flex-col h-full">
+        <div className="relative z-10 flex flex-col h-full p-10">
           {/* Logo / Institution Mark */}
-          <div className="flex items-center gap-3 mb-10">
-            <div
-              className="flex h-12 w-12 items-center justify-center rounded border-2 border-white/30 bg-white/10 text-lg font-bold tracking-tight"
-              aria-label="Anurag University logo placeholder"
-            >
-              AU
-            </div>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-widest text-white/70">
-                Anurag University
-              </p>
-              <p className="text-sm font-semibold text-white">
-                Complaint Tracking System
-              </p>
-            </div>
+          <div className="mb-10">
+            <UniversityLogo variant="light" size="lg" showSubtitle />
           </div>
 
           {/* System Identity */}
@@ -78,7 +74,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
             </p>
 
             {/* Divider */}
-            <div className="my-8 h-px w-16 bg-white/25" aria-hidden="true" />
+            <div className="my-8 h-px w-16 bg-white/30" aria-hidden="true" />
 
             {/* Coverage */}
             <ul className="flex flex-col gap-2 text-sm text-white/70">
@@ -92,7 +88,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
               ].map((item) => (
                 <li key={item} className="flex items-center gap-2">
                   <span
-                    className="h-1 w-1 rounded-full bg-white/40 flex-shrink-0"
+                    className="h-1.5 w-1.5 rounded-full bg-[#C9A227] flex-shrink-0"
                     aria-hidden="true"
                   />
                   {item}
@@ -114,15 +110,13 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
       </div>
 
       {/* ── Right Panel: Login Form ── */}
-      <div className="flex-1 flex flex-col items-center justify-center bg-[#F8F9FF] px-6 py-12">
+      <div className="flex-1 flex flex-col items-center justify-center bg-[#F8FAFC] px-6 py-12">
         <div className="w-full max-w-sm">
           {/* Mobile-only header */}
           <div className="flex items-center gap-2 mb-8 lg:hidden">
-            <div className="flex h-8 w-8 items-center justify-center rounded bg-[#6B1724] text-xs font-bold text-white">
-              AU
-            </div>
+            <UniversityLogo variant="dark" size="sm" showSubtitle={false} />
             <span className="text-sm font-semibold text-[#0F172A]">
-              Anurag University · AU-CTS
+              AU-CTS
             </span>
           </div>
 
@@ -139,7 +133,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           </div>
 
           {/* Login form card */}
-          <div className="rounded bg-white border border-[#E2E8F0] p-6 shadow-[0_1px_3px_0_rgba(15,23,42,0.06),0_1px_2px_-1px_rgba(15,23,42,0.04)]">
+          <div className="rounded-lg bg-white border border-[#E2E8F0] p-6 shadow-sm">
             <LoginForm
               redirectTo={safeRedirect !== "/dashboard" ? safeRedirect : undefined}
               initialError={initialError}
