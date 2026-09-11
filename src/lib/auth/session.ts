@@ -95,6 +95,8 @@ export async function getVerifiedSession(
       email: decoded.email ?? "",
       displayName: decoded.name ?? decoded.email ?? "",
       role: (decoded["role"] as UserRole) ?? "student",
+      departmentId: (decoded["departmentId"] as string) ?? null,
+      isActive: true,
     };
   } catch {
     // Token expired, revoked, or malformed — treat as unauthenticated

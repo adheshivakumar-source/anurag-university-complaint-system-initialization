@@ -25,11 +25,7 @@ const HomeIcon = () => (
   </svg>
 );
 
-const PlusIcon = () => (
-  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-  </svg>
-);
+
 
 const UsersIcon = () => (
   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -37,9 +33,15 @@ const UsersIcon = () => (
   </svg>
 );
 
-const ChartIcon = () => (
+const UserCircleIcon = () => (
   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M17.982 18.725A7.488 7.488 0 0012 15.75a7.488 7.488 0 00-5.982 2.975m11.964 0a9 9 0 10-11.963 0m11.964 0A8.966 8.966 0 0112 21a8.966 8.966 0 01-5.982-2.275M15 9.75a3 3 0 11-6 0 3 3 0 016 0z" />
+  </svg>
+);
+
+const ShieldIcon = () => (
+  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
   </svg>
 );
 
@@ -56,34 +58,27 @@ const navItems: NavItem[] = [
     roles: [USER_ROLES.STUDENT, USER_ROLES.FACULTY, USER_ROLES.STAFF],
   },
   {
-    label: "Submit Complaint",
-    href: "/complaints/new",
-    icon: <PlusIcon />,
-    roles: [USER_ROLES.STUDENT, USER_ROLES.FACULTY, USER_ROLES.STAFF],
-  },
-  {
-    label: "Assigned Complaints",
+    label: "Department Queue",
     href: "/officer",
     icon: <ChecklistIcon />,
     roles: [USER_ROLES.DEPARTMENT_OFFICER],
   },
   {
-    label: "All Complaints",
-    href: "/admin/complaints",
-    icon: <ChecklistIcon />,
+    label: "Admin Portal",
+    href: "/admin",
+    icon: <ShieldIcon />,
     roles: [USER_ROLES.ADMIN],
   },
   {
-    label: "Users",
+    label: "User Management",
     href: "/admin/users",
     icon: <UsersIcon />,
     roles: [USER_ROLES.ADMIN],
   },
   {
-    label: "Analytics",
-    href: "/admin/analytics",
-    icon: <ChartIcon />,
-    roles: [USER_ROLES.ADMIN],
+    label: "My Profile",
+    href: "/profile",
+    icon: <UserCircleIcon />,
   },
 ];
 
@@ -100,10 +95,6 @@ export function AppSidebar({ user }: AppSidebarProps) {
     <aside className="hidden lg:flex w-64 flex-col bg-[#1E293B] text-white flex-shrink-0">
       {/* Logo area */}
       <div className="flex items-center gap-3 px-5 py-4 border-b border-white/10">
-        {/*
-         * AU Logo Placeholder — replace with official logo when available
-         * Target: <img src="/logo/au-logo.svg" alt="Anurag University" />
-         */}
         <div className="flex h-8 w-8 items-center justify-center rounded bg-[#6B1724] text-xs font-bold text-white flex-shrink-0">
           AU
         </div>
@@ -134,9 +125,12 @@ export function AppSidebar({ user }: AppSidebarProps) {
         </ul>
       </nav>
 
-      {/* User info */}
+      {/* User info footer */}
       <div className="border-t border-white/10 px-4 py-3">
-        <div className="flex items-center gap-3">
+        <Link
+          href="/profile"
+          className="flex items-center gap-3 hover:bg-white/5 p-1 rounded transition-colors"
+        >
           <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#6B1724] text-xs font-semibold text-white flex-shrink-0">
             {user.displayName.charAt(0).toUpperCase()}
           </div>
@@ -148,7 +142,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
               {user.role.replace("_", " ")}
             </p>
           </div>
-        </div>
+        </Link>
       </div>
     </aside>
   );

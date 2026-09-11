@@ -2,8 +2,16 @@
 // Barrel export for all AU-CTS domain types.
 // Import from "@/types" rather than individual files.
 
-export type { UserRole, UserProfile, SessionClaims, SessionUser } from "./auth";
-export { USER_ROLES } from "./auth";
+export type {
+  UserRole,
+  SelfRegisterRole,
+  UserProfile,
+  UserProfileDTO,
+  SessionClaims,
+  SessionUser,
+  AuthenticatedUserContext,
+} from "./auth";
+export { USER_ROLES, ROLE_LABELS, SELF_REGISTER_ROLES } from "./auth";
 
 export type {
   ComplaintCategory,

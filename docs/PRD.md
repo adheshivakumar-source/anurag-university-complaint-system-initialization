@@ -1,72 +1,36 @@
 # AU-CTS — Product Requirements Document (PRD)
 
-> **Document Status**: IMPLEMENTED (Phase 1 Foundation) / PLANNED (Phases 2–10)
+> **Document Status**: IMPLEMENTED (Phase 1 Foundation & Phase 2 Auth/User Management) / PLANNED (Phases 3–10)
 > **Institution**: Anurag University
 > **System**: Complaint Tracking System (AU-CTS)
 
 ---
 
-## 1. Executive Summary
+## 1. User Roles & Capabilities Matrix
 
-The Anurag University Complaint Tracking System (AU-CTS) digitizes and streamlines university grievance management across key institutional domains: hostel, transport, classroom, laboratory, maintenance, and academic affairs.
-
----
-
-## 2. User Personas & Roles
-
-| Role | Description | Scope of Authority |
+| Role | Scope of Authority | Implementation Status |
 |---|---|---|
-| **Student** | Enrolled undergraduate / postgraduate students | Submit complaints, view personal complaint history, submit resolution feedback, reopen unresolved cases. |
-| **Faculty** | Academic instructional staff | Submit infrastructure and academic complaints, view personal status. |
-| **Staff** | University administrative and support personnel | Submit maintenance and logistical complaints. |
-| **Department Officer** | Designated grievance handler (e.g., Hostel Warden, Transport In-charge, Lab In-charge) | View assigned department complaints, update status, resolve complaints, escalate or reject invalid filings. |
-| **Admin** | Central university administration / IT | System-wide visibility, user role assignments, routing rule modifications, SLA policy tuning, comprehensive analytics. |
+| **Student** | Submit complaints, view personal complaint history, submit feedback, manage own profile. | **IMPLEMENTED** (Auth & Profile) |
+| **Faculty** | Submit infrastructure and academic complaints, view personal status, manage own profile. | **IMPLEMENTED** (Auth & Profile) |
+| **Staff** | Submit maintenance and logistical complaints, manage own profile. | **IMPLEMENTED** (Auth & Profile) |
+| **Department Officer** | View assigned department complaints, update status, resolve complaints, escalate or reject invalid filings. | **IMPLEMENTED** (Auth, Queue Layout & Security Guards) |
+| **Admin** | System-wide visibility, user role assignments, department mappings, user activation/deactivation, routing rule modifications. | **IMPLEMENTED** (Auth, User Directory, Role Update & Account Toggle) |
 
 ---
 
-## 3. Complaint Categories & Department Routing
-
-1. **Hostel** → Hostel Warden / Residential Life Office
-2. **Transport** → Transport Officer / Logistics
-3. **Classroom** → Maintenance Staff / Facility Operations
-4. **Lab** → Laboratory In-charge / Technical Staff
-5. **Maintenance** → Facility Operations / Estate Maintenance
-6. **Academic** → Academic Officer / Dean's Office
-
----
-
-## 4. Controlled Complaint Lifecycle
-
-```
-[SUBMITTED]
-    │
-    ▼
-[PENDING] (Assigned via routing rules)
-    │
-    ├───────────────────────┬────────────────────────┐
-    ▼                       ▼                        ▼
-[IN_REVIEW]           [REJECTED]                [DUPLICATE]
-    │
-    ├───────────────────────┐
-    ▼                       ▼
-[RESOLVED]             [ESCALATED] (SLA breach / manual)
-    │                       │
-    ├───────────┐           ▼
-    ▼           ▼       [IN_REVIEW]
-[CLOSED]    [REOPENED]
-```
-
----
-
-## 5. Functional Requirements Matrix
+## 2. Functional Requirements Matrix
 
 | Requirement | Implementation Status | Target Phase |
 |---|---|---|
-| Role-based authentication (Email/Password) | **IMPLEMENTED** (Foundation) | Phase 1 & 2 |
+| Role-based authentication (Email/Password) | **IMPLEMENTED** | Phase 1 & 2 |
+| Institutional User Self-Registration (whitelisted roles) | **IMPLEMENTED** | Phase 2 |
+| Admin User Management Directory | **IMPLEMENTED** | Phase 2 |
+| Admin Role Modification & Custom Claims Sync | **IMPLEMENTED** | Phase 2 |
+| Account Deactivation & Session Revocation | **IMPLEMENTED** | Phase 2 |
+| User Self-Profile Management | **IMPLEMENTED** | Phase 2 |
 | App shell, responsive layout, AU design tokens | **IMPLEMENTED** | Phase 1 |
-| Firestore & Storage security rules | **IMPLEMENTED** (Foundation) | Phase 1 |
-| End-to-end route protection | **IMPLEMENTED** | Phase 1 |
-| User profile & claims management | **PLANNED** | Phase 2 |
+| Firestore & Storage security rules | **IMPLEMENTED** | Phase 1 & 2 |
+| End-to-end route protection | **IMPLEMENTED** | Phase 1 & 2 |
 | Complaint submission with attachments & ID generation | **PLANNED** | Phase 3 |
 | Category-based auto-routing | **PLANNED** | Phase 3 |
 | Complaint state machine & officer triage | **PLANNED** | Phase 4 |

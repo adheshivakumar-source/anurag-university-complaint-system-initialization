@@ -1,42 +1,23 @@
-// src/app/(auth)/login/page.tsx
-// Login page — Server Component
-// Handles redirectTo and error query params
+// src/app/(auth)/register/page.tsx
+// Registration page — Server Component
+// Provides institutional onboarding with role selection
 
 import type { Metadata } from "next";
-import { LoginForm } from "./LoginForm";
+import Link from "next/link";
+import { RegisterForm } from "./RegisterForm";
 
 export const metadata: Metadata = {
-  title: "Sign In",
-  description: "Sign in to the Anurag University Complaint Tracking System.",
+  title: "Register Account",
+  description:
+    "Register for an Anurag University Complaint Tracking System account.",
 };
 
-interface LoginPageProps {
-  searchParams: Promise<{ redirectTo?: string; error?: string }>;
-}
-
-export default async function LoginPage({ searchParams }: LoginPageProps) {
-  const { redirectTo, error } = await searchParams;
-
-  // Sanitize redirect — only allow internal paths
-  const safeRedirect =
-    redirectTo && redirectTo.startsWith("/") && !redirectTo.startsWith("//")
-      ? redirectTo
-      : "/dashboard";
-
-  let initialError: string | undefined;
-  if (error === "unauthorized") {
-    initialError = "You do not have administrative clearance to access that area.";
-  } else if (error === "deactivated") {
-    initialError = "This account has been deactivated. Please contact IT support.";
-  } else if (error === "session_expired") {
-    initialError = "Your session has expired. Please sign in again.";
-  }
-
+export default function RegisterPage() {
   return (
     <div className="flex min-h-screen">
       {/* ── Left Panel: University Identity ── */}
       <div className="hidden lg:flex lg:w-2/5 xl:w-1/3 flex-col bg-[#6B1724] text-white p-10 relative overflow-hidden">
-        {/* Subtle texture overlay */}
+        {/* Institutional Pattern Overlay */}
         <div
           className="absolute inset-0 opacity-5"
           style={{
@@ -59,46 +40,42 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
                 Anurag University
               </p>
               <p className="text-sm font-semibold text-white">
-                Complaint Tracking System
+                Institutional Onboarding
               </p>
             </div>
           </div>
 
-          {/* System Identity */}
+          {/* Registration Information */}
           <div className="flex-1">
             <h1
               className="text-3xl font-bold leading-tight tracking-tight mb-3"
               style={{ fontFamily: "'Source Serif 4', serif" }}
             >
-              Institutional Grievance Portal
+              Create Account
             </h1>
             <p className="text-white/75 text-sm leading-relaxed max-w-xs">
-              Secure internal grievance tracking and resolution for students,
-              faculty, staff, department officers, and administration.
+              Students, faculty members, and administrative staff can register
+              to file and monitor university grievances.
             </p>
 
-            {/* Divider */}
             <div className="my-8 h-px w-16 bg-white/25" aria-hidden="true" />
 
-            {/* Coverage */}
-            <ul className="flex flex-col gap-2 text-sm text-white/70">
-              {[
-                "Hostel & Residential Life",
-                "Campus Transportation",
-                "Classrooms & Infrastructure",
-                "Laboratories & Tech Facilities",
-                "Facility Maintenance",
-                "Academic Affairs",
-              ].map((item) => (
-                <li key={item} className="flex items-center gap-2">
-                  <span
-                    className="h-1 w-1 rounded-full bg-white/40 flex-shrink-0"
-                    aria-hidden="true"
-                  />
-                  {item}
-                </li>
-              ))}
-            </ul>
+            <div className="flex flex-col gap-4 text-xs text-white/80">
+              <div className="rounded bg-white/10 p-3 border border-white/15">
+                <p className="font-semibold text-white mb-1">
+                  🎓 Role Access Policies:
+                </p>
+                <p className="leading-relaxed">
+                  Department Officer and Administrator privileges cannot be
+                  self-assigned and require approval from the University IT Dean.
+                </p>
+              </div>
+
+              <p className="leading-relaxed">
+                By registering, you agree to comply with Anurag University IT
+                governance and digital conduct policies.
+              </p>
+            </div>
           </div>
 
           {/* Footer */}
@@ -106,18 +83,16 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
             <p className="text-xs text-white/50">
               © {new Date().getFullYear()} Anurag University. All rights
               reserved.
-              <br />
-              Internal use only. Unauthorized access is strictly logged.
             </p>
           </div>
         </div>
       </div>
 
-      {/* ── Right Panel: Login Form ── */}
+      {/* ── Right Panel: Registration Form ── */}
       <div className="flex-1 flex flex-col items-center justify-center bg-[#F8F9FF] px-6 py-12">
-        <div className="w-full max-w-sm">
-          {/* Mobile-only header */}
-          <div className="flex items-center gap-2 mb-8 lg:hidden">
+        <div className="w-full max-w-md">
+          {/* Mobile Header */}
+          <div className="flex items-center gap-2 mb-6 lg:hidden">
             <div className="flex h-8 w-8 items-center justify-center rounded bg-[#6B1724] text-xs font-bold text-white">
               AU
             </div>
@@ -126,31 +101,32 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
             </span>
           </div>
 
-          <div className="mb-8">
+          <div className="mb-6">
             <h2
               className="text-2xl font-bold text-[#0F172A] mb-1"
               style={{ fontFamily: "'Source Serif 4', serif" }}
             >
-              Welcome back
+              Institutional Registration
             </h2>
             <p className="text-sm text-[#64748B]">
-              Sign in with your institutional credentials.
+              Enter your official details to establish your university account.
             </p>
           </div>
 
-          {/* Login form card */}
+          {/* Registration Card */}
           <div className="rounded bg-white border border-[#E2E8F0] p-6 shadow-[0_1px_3px_0_rgba(15,23,42,0.06),0_1px_2px_-1px_rgba(15,23,42,0.04)]">
-            <LoginForm
-              redirectTo={safeRedirect !== "/dashboard" ? safeRedirect : undefined}
-              initialError={initialError}
-            />
+            <RegisterForm />
           </div>
 
-          <p className="mt-6 text-center text-xs text-[#94A3B8]">
-            This system is for authorized Anurag University personnel only.
-            <br />
-            Sessions are encrypted and access is logged.
-          </p>
+          <div className="mt-6 text-center text-xs text-[#94A3B8]">
+            Need assistance? Contact the{" "}
+            <Link
+              href="mailto:itsupport@anurag.edu.in"
+              className="text-[#6B1724] hover:underline"
+            >
+              AU IT Helpdesk
+            </Link>
+          </div>
         </div>
       </div>
     </div>

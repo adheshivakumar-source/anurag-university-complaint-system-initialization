@@ -8,6 +8,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import Link from "next/link";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { getClientAuth } from "@/lib/firebase/client";
 import { signInAction } from "@/lib/auth/actions";
@@ -29,22 +30,23 @@ type LoginFormData = z.infer<typeof loginSchema>;
 
 interface LoginFormProps {
   redirectTo?: string;
+  initialError?: string;
 }
 
 const FIREBASE_ERROR_MESSAGES: Record<string, string> = {
   "auth/user-not-found": "No account found with this email address.",
   "auth/wrong-password": "Incorrect password. Please try again.",
-  "auth/invalid-credential": "Invalid email or password. Please try again.",
-  "auth/user-disabled": "This account has been disabled. Contact your administrator.",
+  "auth/invalid-credential": "Invalid email or password. Please check your credentials.",
+  "auth/user-disabled": "This account has been disabled. Please contact the administrator.",
   "auth/too-many-requests":
     "Too many failed attempts. Please wait a moment before trying again.",
   "auth/network-request-failed":
     "Network error. Please check your connection and try again.",
-  "auth/invalid-email": "The email address is not valid.",
+  "auth/invalid-email": "The email address format is invalid.",
 };
 
-export function LoginForm({ redirectTo }: LoginFormProps) {
-  const [serverError, setServerError] = useState<string | null>(null);
+export function LoginForm({ redirectTo, initialError }: LoginFormProps) {
+  const [serverError, setServerError] = useState<string | null>(initialError || null);
 
   const {
     register,
@@ -66,8 +68,8 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
         data.password,
       );
 
-      // Step 2: Get the ID token
-      const idToken = await credential.user.getIdToken();
+      // Step 2: Get the ID token (force refresh to ensure latest claims)
+      const idToken = await credential.user.getIdToken(true);
 
       // Step 3: Exchange ID token for session cookie via Server Action
       const result = await signInAction(idToken, redirectTo ?? "/dashboard");
@@ -75,12 +77,12 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
       if (result?.error) {
         setServerError(result.error);
       }
-      // On success, signInAction redirects — this line won't be reached
     } catch (error: unknown) {
       const firebaseError = error as { code?: string; message?: string };
       const code = firebaseError.code ?? "";
       setServerError(
         FIREBASE_ERROR_MESSAGES[code] ??
+          firebaseError.message ??
           "Sign in failed. Please check your credentials and try again.",
       );
     }
@@ -122,8 +124,9 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
             type="button"
             className="text-xs text-[#6B1724] hover:underline underline-offset-4 cursor-pointer"
             onClick={() => {
-              // Placeholder — password reset to be implemented in Phase 2
-              alert("Password reset will be available in the next update.");
+              alert(
+                "Password reset link can be sent to your institutional email. Contact itsupport@anurag.edu.in for manual resets.",
+              );
             }}
           >
             Forgot password?
@@ -140,6 +143,16 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
       >
         {isSubmitting ? "Signing in…" : "Sign In"}
       </Button>
+
+      <div className="text-center text-xs text-[#64748B] pt-2">
+        New to Anurag University?{" "}
+        <Link
+          href="/register"
+          className="font-semibold text-[#6B1724] hover:underline"
+        >
+          Register an Account
+        </Link>
+      </div>
 
       <p className="text-center text-xs text-[#64748B]">
         Having trouble? Contact the{" "}

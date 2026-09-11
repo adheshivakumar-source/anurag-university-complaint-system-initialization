@@ -3,8 +3,11 @@
 // Application top header — displays page context and user actions.
 // Client Component (needed for sign-out interaction).
 
+import Link from "next/link";
 import { signOutAction } from "@/lib/auth/actions";
 import type { SessionUser } from "@/types";
+import { ROLE_LABELS } from "@/types";
+import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 
 interface AppHeaderProps {
@@ -22,7 +25,7 @@ export function AppHeader({ user }: AppHeaderProps) {
         Skip to main content
       </a>
 
-      {/* Left: Mobile menu button (placeholder for Phase 8 mobile nav) */}
+      {/* Left: Mobile branding */}
       <div className="flex items-center gap-3 lg:hidden">
         <div className="flex h-7 w-7 items-center justify-center rounded bg-[#6B1724] text-xs font-bold text-white">
           AU
@@ -31,16 +34,27 @@ export function AppHeader({ user }: AppHeaderProps) {
       </div>
 
       {/* Right: User actions */}
-      <div className="flex items-center gap-3 ml-auto">
-        <span className="hidden sm:block text-sm text-[#64748B]">
-          {user.email}
-        </span>
-        <form action={signOutAction}>
-          <Button
-            type="submit"
-            variant="secondary"
-            size="sm"
+      <div className="flex items-center gap-4 ml-auto">
+        <Link
+          href="/profile"
+          className="hidden sm:flex items-center gap-2 hover:opacity-80 transition-opacity"
+        >
+          <span className="text-xs text-[#64748B] font-medium">{user.email}</span>
+          <Badge
+            variant={
+              user.role === "admin"
+                ? "maroon"
+                : user.role === "department_officer"
+                ? "in_review"
+                : "default"
+            }
           >
+            {ROLE_LABELS[user.role]}
+          </Badge>
+        </Link>
+
+        <form action={signOutAction}>
+          <Button type="submit" variant="secondary" size="sm">
             Sign Out
           </Button>
         </form>

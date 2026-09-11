@@ -1,115 +1,75 @@
-# AU-CTS — Security Model
+# AU-CTS — Security & Authorization Model
 
-> **Document Status**: IMPLEMENTED — Phase 1 Foundation
-> **Last Updated**: Phase 1
-
----
-
-## Overview
-
-AU-CTS implements a layered security model. No single layer is the sole security boundary.
-
-```
-Layer 1: Firebase Authentication   — Identity verification
-Layer 2: Session Cookies            — Server-managed auth state
-Layer 3: Next.js Middleware         — UX-level route protection
-Layer 4: Server Component Verify    — Defense-in-depth
-Layer 5: Server Actions             — Mutation authorization
-Layer 6: Firestore Security Rules   — Database-level access control
-Layer 7: Storage Rules              — File access control
-Layer 8: Custom Claims              — Role authorization
-```
+> **Document Status**: IMPLEMENTED — Phase 2 Authentication & User Management
+> **Database Environment**: Cloud Firestore (`au-cts-prod`)
 
 ---
 
-## Authentication Flow
+## 1. Multi-Layer Defense Architecture
 
 ```
-1. User submits email/password on /login
-2. Firebase client SDK: signInWithEmailAndPassword()
-3. Firebase Auth returns UserCredential + ID Token (1hr expiry)
-4. Client calls signInAction(idToken) — Server Action
-5. Server Action: adminAuth.verifyIdToken(idToken)
-6. Server Action: adminAuth.createSessionCookie(idToken, { expiresIn: 7 days })
-7. Session cookie set: HttpOnly, Secure, SameSite=Lax
-8. User redirected to /dashboard
+Layer 1: Firebase Authentication (Identity Provider)
+Layer 2: Server-Side Verification (Admin SDK verifyIdToken / verifySessionCookie)
+Layer 3: HTTP-Only Session Cookies (__session, 7-day duration, SameSite=Lax, Secure)
+Layer 4: Next.js Proxy/Middleware (Edge route interception & UX redirects)
+Layer 5: Server Component Guards (requireAuthenticatedUser, requireAdmin, requireRole)
+Layer 6: Server Action Gates (Strict validation, caller authorization verification)
+Layer 7: Cloud Firestore Security Rules (Deny-by-default, token.role claims)
+Layer 8: Firebase Storage Rules (Path ownership & file size limits)
 ```
 
-## Session Management
+---
 
-- **Cookie name**: `__session`
-- **Duration**: 7 days
-- **Storage**: HttpOnly (inaccessible to JavaScript)
-- **Transport**: Secure flag in production (HTTPS only)
-- **SameSite**: Lax (prevents CSRF on cross-origin navigation)
+## 2. Role Model & Authorization Matrix
 
-## Role Authorization
+| Role | Self-Register? | Routes Accessible | Actions Permitted |
+|---|---|---|---|
+| **Student** | Yes | `/dashboard`, `/complaints`, `/profile` | Submit complaints, view own history, submit feedback, reopen own cases. |
+| **Faculty** | Yes | `/dashboard`, `/complaints`, `/profile` | Submit institutional & academic grievances, view own history. |
+| **Staff** | Yes | `/dashboard`, `/complaints`, `/profile` | Submit maintenance & logistics complaints, view own history. |
+| **Department Officer** | **No** (Admin-assigned) | `/dashboard`, `/complaints`, `/profile`, `/officer` | Review assigned department queue, update ticket status, resolve/escalate tickets. |
+| **Admin** | **No** (Root bootstrap) | `/dashboard`, `/complaints`, `/profile`, `/officer`, `/admin/*` | Full system access, manage user roles, assign departments, activate/deactivate accounts, configure routing. |
 
-Roles are stored as **Firebase Custom Claims** — embedded in the ID token JWT.
+---
 
-| Property | Value |
+## 3. Custom Claims Implementation & Synchronization
+
+Firebase Custom Claims provide low-latency, database-layer role enforcement in Firestore rules:
+
+```typescript
+// Custom claims payload structure (max 1000 bytes)
+interface UserCustomClaims {
+  role: "student" | "faculty" | "staff" | "department_officer" | "admin";
+  departmentId?: string | null;
+}
+```
+
+### Claims Synchronization Protocol
+1. When an Administrator modifies a user's role in `/admin/users`:
+   - Step A: Update Firestore document `/users/{targetUid}` with `role` and `departmentId`.
+   - Step B: Call `adminAuth.setCustomUserClaims(targetUid, { role, departmentId })`.
+   - Step C: Revalidate affected route paths via `revalidatePath()`.
+2. On ordinary user login:
+   - The server verifies custom claims against the authoritative Firestore document. If a desynchronization is detected, custom claims are immediately re-minted from the Firestore source of truth.
+
+---
+
+## 4. Account Deactivation Protocol
+
+1. When an Administrator deactivates an account:
+   - Firestore `/users/{targetUid}` is updated with `isActive: false`.
+   - Firebase Auth account is disabled via `adminAuth.updateUser(targetUid, { disabled: true })`.
+   - Active tokens and session cookies are revoked via `adminAuth.revokeRefreshTokens(targetUid)`.
+2. All server authorization helpers (`requireAuthenticatedUser()`, `getAuthenticatedUser()`) check `profile.isActive`. If `false`, the session is destroyed immediately, and the request is rejected with a redirect to `/login?error=deactivated`.
+
+---
+
+## 5. Security Threat Mitigations
+
+| Threat Vector | Defense Mechanism |
 |---|---|
-| Claim name | `role` |
-| Set by | Firebase Admin SDK only (server-side) |
-| Client-writable | ❌ Never |
-| Available in rules | `request.auth.token.role` |
-| Available server-side | Decoded token `role` field |
-
-### Valid Roles
-
-| Role | Identifier |
-|---|---|
-| Student | `student` |
-| Faculty | `faculty` |
-| Staff | `staff` |
-| Department Officer | `department_officer` |
-| Administrator | `admin` |
-
-## Firestore Security Rules (IMPLEMENTED)
-
-All Firestore access is denied by default. Only explicit allow rules grant access.
-
-### Users Collection `/users/{userId}`
-- **Read**: Own profile OR admin OR officer
-- **Write**: Admin only (role assignment server-side)
-
-### Complaints Collection `/complaints/{complaintId}`
-- **Create**: Authenticated student/faculty/staff — must set `submittedBy` to own UID
-- **Read**: Own submissions OR assigned officer OR admin
-- **Update**: Assigned officer (for status changes) OR admin
-- **Delete**: Nobody — complaints are permanent records
-
-### Audit Sub-collection `/complaints/{id}/audit/{auditId}`
-- **Read**: Admin OR assigned officer
-- **Write**: Denied to all clients — Admin SDK only via Cloud Functions
-
-### Other Collections
-- `/routingRules`: Admin only
-- `/departments`: Read (all authenticated), Write (admin)
-- `/notifications`: Read/update own (users), Write (Cloud Functions)
-
-## Firebase Storage Rules (IMPLEMENTED)
-
-- Complaint attachments: Authenticated upload, Admin SDK-only deletion
-- No public read access — all file access via signed URLs generated server-side
-- File size limit: 10MB enforced at storage rules level
-
-## Threat Mitigation
-
-| Threat | Mitigation |
-|---|---|
-| Client claiming wrong role | Custom claims set Admin SDK only |
-| Forged session cookie | Admin SDK verifies signature on every protected request |
-| Horizontal escalation | Firestore rules enforce `submittedBy == uid` |
-| Direct Firestore manipulation | Rules deny arbitrary writes |
-| XSS → token theft | HttpOnly cookie — no token in localStorage |
-| CSRF | SameSite=Lax cookie + Server Actions (no GET-based mutations) |
-| Storage URL leakage | Signed URLs with short expiry, server-side only |
-| Admin SDK browser exposure | `server-only` package prevents import in Client Components |
-
-## Known Limitations (Phase 1)
-
-- FIREBASE_SERVICE_ACCOUNT_KEY must be provided manually for Admin SDK to work server-side
-- No token revocation check on every request (only on sensitive operations) — `checkRevoked: true` will be added for admin operations in Phase 2
-- Email notifications not yet implemented
-- Rate limiting not yet implemented (planned for Phase 9 hardening)
+| **Privilege Escalation** | Self-registration role is whitelisted to `['student', 'faculty', 'staff']`. Requests for `admin` or `department_officer` are overridden to `student`. |
+| **Direct Firestore Tampering** | Rules strictly deny client writes to `/users/{userId}` for non-admin tokens. All user updates go through server actions. |
+| **Cookie Tampering** | Cookies are verified using Admin SDK cryptographic signature checks on the server. |
+| **XSS Token Theft** | Tokens are stored in HttpOnly cookies, rendering them inaccessible to browser JavaScript. |
+| **Stale Session Abuse** | Revocation of refresh tokens and account disabling immediately terminates access across all endpoints. |
