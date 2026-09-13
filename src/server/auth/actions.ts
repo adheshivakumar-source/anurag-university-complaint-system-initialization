@@ -11,11 +11,11 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { getAdminAuth } from "@/lib/firebase/admin";
+import { getAdminAuth } from "@/server/firebase/admin";
 import { createSession, destroySession } from "./session";
-import { getOrCreateUserProfile } from "@/lib/users/service";
-import type { UserRole, SelfRegisterRole } from "@/types";
-import { USER_ROLES, SELF_REGISTER_ROLES } from "@/types";
+import { getOrCreateUserProfile } from "@/server/users/service";
+import type { UserRole, SelfRegisterRole } from "@/shared/types";
+import { USER_ROLES, SELF_REGISTER_ROLES } from "@/shared/types";
 
 /**
  * Establishes a server-side session after client-side Firebase sign-in.

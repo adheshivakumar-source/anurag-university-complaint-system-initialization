@@ -13,7 +13,7 @@ import {
   type ComplaintCategory,
   type ComplaintPriority,
   type ComplaintStatus,
-} from "@/types";
+} from "@/shared/types";
 
 /**
  * Allowed MIME types for complaint attachments.

@@ -4,9 +4,9 @@
 
 import { type HTMLAttributes } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
-import { cn } from "@/lib/utils";
-import type { ComplaintStatus, ComplaintPriority } from "@/types";
-import { STATUS_LABELS, PRIORITY_LABELS } from "@/types";
+import { cn } from "@/utils/utils";
+import type { ComplaintStatus, ComplaintPriority } from "@/shared/types";
+import { STATUS_LABELS, PRIORITY_LABELS } from "@/shared/types";
 
 const badgeVariants = cva(
   "inline-flex items-center rounded px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider border",

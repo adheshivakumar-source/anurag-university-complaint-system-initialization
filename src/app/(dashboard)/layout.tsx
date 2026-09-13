@@ -5,7 +5,7 @@
 // Renders the app shell: header + sidebar + main content area.
 
 import { redirect } from "next/navigation";
-import { getAuthenticatedUser } from "@/lib/auth/authorization";
+import { getAuthenticatedUser } from "@/server/auth/authorization";
 import { AppSidebar } from "@/components/dashboard/AppSidebar";
 import { AppHeader } from "@/components/dashboard/AppHeader";
 

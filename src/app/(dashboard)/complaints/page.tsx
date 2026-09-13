@@ -6,15 +6,15 @@
 
 import type { Metadata } from "next";
 import Link from "next/link";
-import { requireAuthenticatedUser } from "@/lib/auth/authorization";
+import { requireAuthenticatedUser } from "@/server/auth/authorization";
 import {
   listUserComplaints,
   serializeComplaintToDTO,
-} from "@/lib/complaints/service";
+} from "@/server/complaints/service";
 import { ComplaintsListClient } from "./ComplaintsListClient";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { USER_ROLES } from "@/types";
+import { USER_ROLES } from "@/shared/types";
 
 export const metadata: Metadata = {
   title: "My Complaints — AU-CTS",

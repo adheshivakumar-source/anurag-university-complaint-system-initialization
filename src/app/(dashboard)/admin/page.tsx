@@ -3,10 +3,10 @@
 
 import type { Metadata } from "next";
 import Link from "next/link";
-import { listAllUsers } from "@/lib/users/service";
+import { listAllUsers } from "@/server/users/service";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { USER_ROLES } from "@/types";
+import { USER_ROLES } from "@/shared/types";
 
 export const metadata: Metadata = {
   title: "Admin Portal",

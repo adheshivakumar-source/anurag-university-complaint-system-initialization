@@ -5,12 +5,12 @@
 // ============================================================
 
 import type { Metadata } from "next";
-import { requireDepartmentOfficer } from "@/lib/auth/authorization";
+import { requireDepartmentOfficer } from "@/server/auth/authorization";
 import {
   listDepartmentComplaints,
   serializeComplaintToDTO,
-} from "@/lib/complaints/service";
-import { getDepartmentInfo } from "@/lib/complaints/routing";
+} from "@/server/complaints/service";
+import { getDepartmentInfo } from "@/server/complaints/routing";
 import { OfficerQueueClient } from "./OfficerQueueClient";
 
 export const metadata: Metadata = {

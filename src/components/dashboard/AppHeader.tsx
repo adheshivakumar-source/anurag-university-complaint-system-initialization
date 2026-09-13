@@ -4,9 +4,9 @@
 // Client Component (needed for sign-out interaction).
 
 import Link from "next/link";
-import { signOutAction } from "@/lib/auth/actions";
-import type { SessionUser } from "@/types";
-import { ROLE_LABELS } from "@/types";
+import { signOutAction } from "@/server/auth/actions";
+import type { SessionUser } from "@/shared/types";
+import { ROLE_LABELS } from "@/shared/types";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { UniversityLogo } from "@/components/ui/UniversityLogo";

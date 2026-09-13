@@ -1,8 +1,8 @@
 // src/app/(dashboard)/officer/layout.tsx
 // Department Officer Layout — Enforces officer or admin authorization.
 
-import { requireAnyRole } from "@/lib/auth/authorization";
-import { USER_ROLES } from "@/types";
+import { requireAnyRole } from "@/server/auth/authorization";
+import { USER_ROLES } from "@/shared/types";
 
 export default async function OfficerLayout({
   children,

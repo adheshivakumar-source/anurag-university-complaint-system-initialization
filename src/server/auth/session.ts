@@ -19,9 +19,9 @@
 import "server-only";
 
 import { cookies } from "next/headers";
-import { getAdminAuth } from "@/lib/firebase/admin";
-import type { SessionUser } from "@/types";
-import type { UserRole } from "@/types/auth";
+import { getAdminAuth } from "@/server/firebase/admin";
+import type { SessionUser } from "@/shared/types";
+import type { UserRole } from "@/shared/types/auth";
 
 const SESSION_COOKIE_NAME = "__session";
 const SESSION_DURATION_MS = 60 * 60 * 24 * 7 * 1000; // 7 days

@@ -9,11 +9,11 @@
 import { test, expect } from "@playwright/test";
 import {
   assignComplaintSchema,
-} from "@/lib/complaints/validation";
+} from "@/shared/validation/validation";
 import type {
   ComplaintDTO,
   ComplaintStatus,
-} from "@/types";
+} from "@/shared/types";
 import {
   COMPLAINT_CATEGORIES,
   COMPLAINT_PRIORITIES,
@@ -21,7 +21,7 @@ import {
   STATUS_LABELS,
   TERMINAL_STATUSES,
   USER_ROLES,
-} from "@/types";
+} from "@/shared/types";
 
 export interface SlaPresentation {
   label: string;

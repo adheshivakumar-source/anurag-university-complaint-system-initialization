@@ -7,15 +7,15 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAdmin, requireAuthenticatedUser } from "@/lib/auth/authorization";
+import { requireAdmin, requireAuthenticatedUser } from "@/server/auth/authorization";
 import {
   adminUpdateUserRoleAndDept,
   adminToggleUserActiveStatus,
   updateUserSelfProfile,
   serializeUserProfile,
 } from "./service";
-import type { UserRole, UserProfileDTO } from "@/types";
-import { USER_ROLES } from "@/types";
+import type { UserRole, UserProfileDTO } from "@/shared/types";
+import { USER_ROLES } from "@/shared/types";
 
 /**
  * Admin action: Update a user's role and department.

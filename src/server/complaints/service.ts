@@ -13,7 +13,7 @@
 import "server-only";
 
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
-import { getAdminFirestore } from "@/lib/firebase/admin";
+import { getAdminFirestore } from "@/server/firebase/admin";
 import { resolveDepartmentRouting } from "./routing";
 import {
   validateStatusTransition,
@@ -37,7 +37,7 @@ import {
   type UpdateComplaintStatusInput,
   type AssignComplaintInput,
   type SubmitFeedbackInput,
-} from "./validation";
+} from "@/shared/validation/validation";
 import type {
   Complaint,
   ComplaintDTO,
@@ -50,13 +50,13 @@ import type {
   SanitizedTimelineEventDTO,
   AuthenticatedUserContext,
   UserRole,
-} from "@/types";
+} from "@/shared/types";
 import {
   COMPLAINT_STATUSES,
   STATUS_LABELS,
   AUDIT_ACTIONS,
   USER_ROLES,
-} from "@/types";
+} from "@/shared/types";
 
 const COMPLAINTS_COLLECTION = "complaints";
 const AUDIT_SUBCOLLECTION = "audit";

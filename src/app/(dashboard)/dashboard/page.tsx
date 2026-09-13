@@ -4,11 +4,11 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { requireAuthenticatedUser } from "@/lib/auth/authorization";
+import { requireAuthenticatedUser } from "@/server/auth/authorization";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
-import { ROLE_LABELS, USER_ROLES } from "@/types";
+import { ROLE_LABELS, USER_ROLES } from "@/shared/types";
 
 export const metadata: Metadata = {
   title: "Dashboard",

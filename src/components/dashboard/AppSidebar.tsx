@@ -3,8 +3,8 @@
 // Server Component (no client state needed at this level)
 
 import Link from "next/link";
-import type { SessionUser } from "@/types";
-import { USER_ROLES } from "@/types";
+import type { SessionUser } from "@/shared/types";
+import { USER_ROLES } from "@/shared/types";
 import { UniversityLogo } from "@/components/ui/UniversityLogo";
 
 interface NavItem {

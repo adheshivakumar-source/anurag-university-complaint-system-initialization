@@ -15,12 +15,12 @@ import type {
   ComplaintCategory,
   ComplaintPriority,
   UserRole,
-} from "@/types";
+} from "@/shared/types";
 import {
   COMPLAINT_CATEGORIES,
   COMPLAINT_PRIORITIES,
   USER_ROLES,
-} from "@/types";
+} from "@/shared/types";
 
 export interface DepartmentInfo {
   departmentId: string;

@@ -15,15 +15,15 @@ import "server-only";
 
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
-import { getAdminAuth } from "@/lib/firebase/admin";
+import { getAdminAuth } from "@/server/firebase/admin";
 import { getSessionCookieName, destroySession } from "./session";
-import { getUserProfile, getOrCreateUserProfile } from "@/lib/users/service";
+import { getUserProfile, getOrCreateUserProfile } from "@/server/users/service";
 import type {
   AuthenticatedUserContext,
   SessionUser,
   UserRole,
-} from "@/types";
-import { USER_ROLES } from "@/types";
+} from "@/shared/types";
+import { USER_ROLES } from "@/shared/types";
 
 /**
  * Validates the current session and retrieves the authoritative user context.

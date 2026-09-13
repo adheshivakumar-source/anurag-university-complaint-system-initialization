@@ -7,11 +7,11 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { updateSelfProfileAction } from "@/lib/users/actions";
+import { updateSelfProfileAction } from "@/server/users/actions";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import type { UserProfileDTO } from "@/types";
-import { USER_ROLES } from "@/types";
+import type { UserProfileDTO } from "@/shared/types";
+import { USER_ROLES } from "@/shared/types";
 
 const profileSchema = z.object({
   displayName: z

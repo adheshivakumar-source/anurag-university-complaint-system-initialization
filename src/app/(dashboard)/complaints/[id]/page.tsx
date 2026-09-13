@@ -7,21 +7,21 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { requireAuthenticatedUser } from "@/lib/auth/authorization";
+import { requireAuthenticatedUser } from "@/server/auth/authorization";
 import {
   getComplaintById,
   getSanitizedComplaintTimeline,
   serializeComplaintToDTO,
   UnauthorizedComplaintAccessError,
-} from "@/lib/complaints/service";
-import { getDepartmentInfo } from "@/lib/complaints/routing";
+} from "@/server/complaints/service";
+import { getDepartmentInfo } from "@/server/complaints/routing";
 import {
   CATEGORY_LABELS,
   COMPLAINT_STATUSES,
   USER_ROLES,
   type ComplaintCategory,
   type AttachmentRefDTO,
-} from "@/types";
+} from "@/shared/types";
 import { StatusBadge, PriorityBadge } from "@/components/ui/Badge";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { ComplaintTimeline } from "./ComplaintTimeline";

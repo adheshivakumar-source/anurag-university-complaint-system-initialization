@@ -13,18 +13,18 @@ import type {
   ComplaintDTO,
   ComplaintPriority,
   ComplaintStatus,
-} from "@/types";
+} from "@/shared/types";
 import {
   CATEGORY_LABELS,
   TERMINAL_STATUSES,
   STATUS_LABELS,
-} from "@/types";
+} from "@/shared/types";
 import { StatusBadge, PriorityBadge, Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
-import { pickupComplaintAction } from "@/lib/complaints/actions";
+import { pickupComplaintAction } from "@/server/complaints/actions";
 
 export type QueueTab = "unassigned" | "my_tickets" | "in_review" | "resolved" | "all";
 

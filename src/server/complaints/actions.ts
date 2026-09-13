@@ -12,7 +12,7 @@
 
 "use server";
 
-import { getAuthenticatedUser } from "@/lib/auth/authorization";
+import { getAuthenticatedUser } from "@/server/auth/authorization";
 import {
   createComplaint,
   updateComplaintStatus,
@@ -26,8 +26,8 @@ import type {
   UpdateComplaintStatusInput,
   AssignComplaintInput,
   SubmitFeedbackInput,
-} from "./validation";
-import { USER_ROLES } from "@/types";
+} from "@/shared/validation/validation";
+import { USER_ROLES } from "@/shared/types";
 import { revalidatePath } from "next/cache";
 
 export interface ActionResponse<T = unknown> {

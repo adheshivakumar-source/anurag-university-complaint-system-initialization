@@ -7,11 +7,11 @@
 "use client";
 
 import { useState } from "react";
-import type { ComplaintDTO, ComplaintFeedbackDTO } from "@/types";
-import { COMPLAINT_STATUSES } from "@/types";
+import type { ComplaintDTO, ComplaintFeedbackDTO } from "@/shared/types";
+import { COMPLAINT_STATUSES } from "@/shared/types";
 import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Textarea";
-import { submitFeedbackAction } from "@/lib/complaints/actions";
+import { submitFeedbackAction } from "@/server/complaints/actions";
 
 interface ComplaintFeedbackSectionProps {
   complaint: ComplaintDTO;

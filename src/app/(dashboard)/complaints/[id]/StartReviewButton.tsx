@@ -11,7 +11,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
-import { startReviewComplaintAction } from "@/lib/complaints/actions";
+import { startReviewComplaintAction } from "@/server/complaints/actions";
 
 interface StartReviewButtonProps {
   complaintId: string;

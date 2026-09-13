@@ -1,6 +1,6 @@
 // src/types/index.ts
 // Barrel export for all AU-CTS domain types.
-// Import from "@/types" rather than individual files.
+// Import from "@/shared/types" rather than individual files.
 
 export type {
   UserRole,

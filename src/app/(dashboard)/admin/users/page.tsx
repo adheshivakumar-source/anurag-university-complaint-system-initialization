@@ -2,8 +2,8 @@
 // Administrator User Management Directory Page
 
 import type { Metadata } from "next";
-import { requireAdmin } from "@/lib/auth/authorization";
-import { listAllUsers, serializeUserProfile } from "@/lib/users/service";
+import { requireAdmin } from "@/server/auth/authorization";
+import { listAllUsers, serializeUserProfile } from "@/server/users/service";
 import { UsersTable } from "./UsersTable";
 
 export const metadata: Metadata = {

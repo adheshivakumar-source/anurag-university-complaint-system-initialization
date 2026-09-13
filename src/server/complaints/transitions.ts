@@ -8,12 +8,12 @@ import crypto from "crypto";
 import type {
   ComplaintStatus,
   UserRole,
-} from "@/types";
+} from "@/shared/types";
 import {
   COMPLAINT_STATUSES,
   TERMINAL_STATUSES,
   USER_ROLES,
-} from "@/types";
+} from "@/shared/types";
 
 export interface TransitionActorContext {
   uid: string;

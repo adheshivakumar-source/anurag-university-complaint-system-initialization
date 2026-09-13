@@ -4,8 +4,8 @@
 // Rendered purely from authenticated, sanitized Firestore audit records.
 // ============================================================
 
-import type { SanitizedTimelineEventDTO } from "@/types";
-import { AUDIT_ACTIONS } from "@/types";
+import type { SanitizedTimelineEventDTO } from "@/shared/types";
+import { AUDIT_ACTIONS } from "@/shared/types";
 
 interface ComplaintTimelineProps {
   events: SanitizedTimelineEventDTO[];

@@ -8,13 +8,13 @@
 import { test, expect } from "@playwright/test";
 import {
   submitFeedbackSchema,
-} from "@/lib/complaints/validation";
+} from "@/shared/validation/validation";
 import type {
   Complaint,
   ComplaintDTO,
   AuditEvent,
   SanitizedTimelineEventDTO,
-} from "@/types";
+} from "@/shared/types";
 import {
   COMPLAINT_CATEGORIES,
   COMPLAINT_PRIORITIES,
@@ -22,7 +22,7 @@ import {
   STATUS_LABELS,
   AUDIT_ACTIONS,
   USER_ROLES,
-} from "@/types";
+} from "@/shared/types";
 
 
 const BASE_URL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000";

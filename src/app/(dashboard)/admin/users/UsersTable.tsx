@@ -8,12 +8,12 @@ import { useRouter } from "next/navigation";
 import {
   adminUpdateUserRoleAction,
   adminToggleUserStatusAction,
-} from "@/lib/users/actions";
+} from "@/server/users/actions";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
-import type { UserProfileDTO, UserRole } from "@/types";
-import { USER_ROLES, ROLE_LABELS, COMPLAINT_CATEGORIES } from "@/types";
-import { formatDate } from "@/lib/utils";
+import type { UserProfileDTO, UserRole } from "@/shared/types";
+import { USER_ROLES, ROLE_LABELS, COMPLAINT_CATEGORIES } from "@/shared/types";
+import { formatDate } from "@/utils/utils";
 
 interface UsersTableProps {
   initialUsers: UserProfileDTO[];

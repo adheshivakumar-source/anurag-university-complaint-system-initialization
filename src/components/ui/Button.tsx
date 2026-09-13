@@ -5,7 +5,7 @@
 
 import { type ButtonHTMLAttributes, forwardRef } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
-import { cn } from "@/lib/utils";
+import { cn } from "@/utils/utils";
 
 const buttonVariants = cva(
   // Base styles — applied to all variants

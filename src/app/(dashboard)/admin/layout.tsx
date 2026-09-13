@@ -2,7 +2,7 @@
 // Administrator Layout — Enforces strict admin role check server-side.
 // Non-admins attempting to access any /admin/* route are redirected.
 
-import { requireAdmin } from "@/lib/auth/authorization";
+import { requireAdmin } from "@/server/auth/authorization";
 
 export default async function AdminLayout({
   children,

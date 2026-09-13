@@ -10,12 +10,12 @@ import Link from "next/link";
 import {
   createComplaintSchema,
   type CreateComplaintFormData,
-} from "@/lib/complaints/validation";
-import { createComplaintAction } from "@/lib/complaints/actions";
+} from "@/shared/validation/validation";
+import { createComplaintAction } from "@/server/complaints/actions";
 import {
   DEPARTMENT_CONFIGS,
   PROVISIONAL_DEFAULT_SLA,
-} from "@/lib/complaints/routing";
+} from "@/server/complaints/routing";
 import {
   COMPLAINT_CATEGORIES,
   COMPLAINT_PRIORITIES,
@@ -23,7 +23,7 @@ import {
   PRIORITY_LABELS,
   type ComplaintCategory,
   type ComplaintPriority,
-} from "@/types";
+} from "@/shared/types";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";

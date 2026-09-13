@@ -14,14 +14,14 @@
 import "server-only";
 
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
-import { getAdminAuth, getAdminFirestore } from "@/lib/firebase/admin";
+import { getAdminAuth, getAdminFirestore } from "@/server/firebase/admin";
 import type {
   UserProfile,
   UserProfileDTO,
   UserRole,
   SelfRegisterRole,
-} from "@/types";
-import { USER_ROLES, SELF_REGISTER_ROLES } from "@/types";
+} from "@/shared/types";
+import { USER_ROLES, SELF_REGISTER_ROLES } from "@/shared/types";
 
 const USERS_COLLECTION = "users";
 

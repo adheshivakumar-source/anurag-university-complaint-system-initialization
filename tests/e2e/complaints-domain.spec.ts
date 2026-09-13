@@ -10,22 +10,22 @@ import {
   createComplaintSchema,
   updateComplaintStatusSchema,
   attachmentRefSchema,
-} from "@/lib/complaints/validation";
+} from "@/shared/validation/validation";
 import {
   resolveDepartmentRouting,
   DEPARTMENT_CONFIGS,
   PROVISIONAL_DEFAULT_SLA,
-} from "@/lib/complaints/routing";
+} from "@/server/complaints/routing";
 import {
   validateStatusTransition,
   generateComplaintId,
-} from "@/lib/complaints/transitions";
+} from "@/server/complaints/transitions";
 import {
   COMPLAINT_CATEGORIES,
   COMPLAINT_PRIORITIES,
   COMPLAINT_STATUSES,
   USER_ROLES,
-} from "@/types";
+} from "@/shared/types";
 
 test.describe("Complaint Domain Validation (Zod Schemas)", () => {
   test("accepts valid complaint creation payload", () => {

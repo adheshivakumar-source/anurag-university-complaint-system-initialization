@@ -3,7 +3,7 @@
 // Includes label, error state, character counter, and hint text support
 
 import { type TextareaHTMLAttributes, forwardRef, useId } from "react";
-import { cn } from "@/lib/utils";
+import { cn } from "@/utils/utils";
 
 export interface TextareaProps
   extends TextareaHTMLAttributes<HTMLTextAreaElement> {

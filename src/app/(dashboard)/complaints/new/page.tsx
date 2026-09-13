@@ -3,8 +3,8 @@
 
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { requireAuthenticatedUser } from "@/lib/auth/authorization";
-import { USER_ROLES } from "@/types";
+import { requireAuthenticatedUser } from "@/server/auth/authorization";
+import { USER_ROLES } from "@/shared/types";
 import { ComplaintForm } from "./ComplaintForm";
 
 export const metadata: Metadata = {

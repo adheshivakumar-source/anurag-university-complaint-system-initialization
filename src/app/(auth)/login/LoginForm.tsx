@@ -10,8 +10,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import Link from "next/link";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { getClientAuth } from "@/lib/firebase/client";
-import { signInAction } from "@/lib/auth/actions";
+import { getClientAuth } from "@/client/firebase/client";
+import { signInAction } from "@/server/auth/actions";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 

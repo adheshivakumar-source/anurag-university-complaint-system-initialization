@@ -8,15 +8,15 @@
 import { test, expect } from "@playwright/test";
 import {
   createComplaintSchema,
-} from "@/lib/complaints/validation";
+} from "@/shared/validation/validation";
 import {
   resolveDepartmentRouting,
-} from "@/lib/complaints/routing";
+} from "@/server/complaints/routing";
 import {
   COMPLAINT_CATEGORIES,
   COMPLAINT_PRIORITIES,
   USER_ROLES,
-} from "@/types";
+} from "@/shared/types";
 
 const BASE_URL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000";
 

@@ -3,13 +3,13 @@
 // Enforces authenticated session and displays institutional account details
 
 import type { Metadata } from "next";
-import { requireAuthenticatedUser } from "@/lib/auth/authorization";
-import { serializeUserProfile } from "@/lib/users/service";
+import { requireAuthenticatedUser } from "@/server/auth/authorization";
+import { serializeUserProfile } from "@/server/users/service";
 import { ProfileForm } from "./ProfileForm";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import { ROLE_LABELS } from "@/types";
-import { formatDate } from "@/lib/utils";
+import { ROLE_LABELS } from "@/shared/types";
+import { formatDate } from "@/utils/utils";
 
 export const metadata: Metadata = {
   title: "My Profile",

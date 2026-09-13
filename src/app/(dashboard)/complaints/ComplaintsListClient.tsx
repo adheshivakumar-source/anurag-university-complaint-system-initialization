@@ -8,7 +8,7 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import type { ComplaintDTO } from "@/types";
+import type { ComplaintDTO } from "@/shared/types";
 import {
   COMPLAINT_CATEGORIES,
   CATEGORY_LABELS,
@@ -16,11 +16,11 @@ import {
   STATUS_LABELS,
   type ComplaintCategory,
   type ComplaintStatus,
-} from "@/types";
+} from "@/shared/types";
 import { StatusBadge, PriorityBadge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
-import { getDepartmentInfo } from "@/lib/complaints/routing";
+import { getDepartmentInfo } from "@/server/complaints/routing";
 
 interface ComplaintsListClientProps {
   complaints: ComplaintDTO[];

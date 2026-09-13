@@ -9,12 +9,12 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import Link from "next/link";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
-import { getClientAuth } from "@/lib/firebase/client";
-import { registerAction } from "@/lib/auth/actions";
+import { getClientAuth } from "@/client/firebase/client";
+import { registerAction } from "@/server/auth/actions";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { USER_ROLES } from "@/types";
-import type { UserRole } from "@/types";
+import { USER_ROLES } from "@/shared/types";
+import type { UserRole } from "@/shared/types";
 
 const registerSchema = z
   .object({
