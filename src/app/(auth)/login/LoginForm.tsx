@@ -84,12 +84,15 @@ export function LoginForm({ redirectTo, initialError }: LoginFormProps) {
     } catch (error: unknown) {
       const firebaseError = error as { code?: string; message?: string };
       const code = firebaseError.code ?? "";
-      // Dev-only diagnostic: logs error code only — never logs passwords or tokens
+      // Dev-only diagnostic: logs error code or error message — never logs passwords or tokens
       if (process.env.NODE_ENV === "development") {
-        console.error("[AU-CTS Auth] Firebase sign-in error code:", code);
+        console.error(
+          "[AU-CTS Auth] Firebase sign-in error:",
+          code || (error instanceof Error ? error.message : "unknown_error"),
+        );
       }
       setServerError(
-        FIREBASE_ERROR_MESSAGES[code] ??
+        (code ? FIREBASE_ERROR_MESSAGES[code] : undefined) ??
           firebaseError.message ??
           "Sign in failed. Please check your credentials and try again.",
       );
