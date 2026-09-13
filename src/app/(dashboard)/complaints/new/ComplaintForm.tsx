@@ -11,7 +11,10 @@ import {
   createComplaintSchema,
   type CreateComplaintFormData,
 } from "@/shared/validation/validation";
-import { createComplaintAction } from "@/server/complaints/actions";
+import {
+  createComplaintAction,
+  uploadComplaintAttachmentAction,
+} from "@/server/complaints/actions";
 import {
   DEPARTMENT_CONFIGS,
   PROVISIONAL_DEFAULT_SLA,
@@ -23,6 +26,7 @@ import {
   PRIORITY_LABELS,
   type ComplaintCategory,
   type ComplaintPriority,
+  type AttachmentRefDTO,
 } from "@/shared/types";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -36,11 +40,21 @@ interface SuccessReceipt {
   category: ComplaintCategory;
   priority: ComplaintPriority;
   departmentName: string;
+  attachmentName?: string | null;
   submittedAt: string;
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 export function ComplaintForm() {
   const [serverError, setServerError] = useState<string | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState<boolean>(false);
   const [receipt, setReceipt] = useState<SuccessReceipt | null>(null);
 
   const {
@@ -69,10 +83,88 @@ export function ComplaintForm() {
   const provisionalHours =
     PROVISIONAL_DEFAULT_SLA[selectedCategory]?.[selectedPriority] ?? 24;
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFileError(null);
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const file = files[0];
+    const maxBytes = 10 * 1024 * 1024; // 10MB
+    const validMimes = [
+      "image/jpeg",
+      "image/jpg",
+      "image/png",
+      "image/webp",
+      "application/pdf",
+    ];
+    const validExtensions = [".jpg", ".jpeg", ".png", ".webp", ".pdf"];
+    const fileExt = "." + file.name.split(".").pop()?.toLowerCase();
+
+    const isMimeValid = validMimes.includes(file.type.toLowerCase());
+    const isExtValid = validExtensions.includes(fileExt);
+
+    if (!isMimeValid && !isExtValid) {
+      setFileError("File must be JPG, PNG, or PDF and smaller than 10 MB.");
+      e.target.value = "";
+      return;
+    }
+
+    if (file.size > maxBytes) {
+      setFileError("File must be JPG, PNG, or PDF and smaller than 10 MB.");
+      e.target.value = "";
+      return;
+    }
+
+    if (file.size <= 0) {
+      setFileError("The selected file is empty.");
+      e.target.value = "";
+      return;
+    }
+
+    setSelectedFile(file);
+  };
+
+  const handleRemoveFile = () => {
+    setSelectedFile(null);
+    setFileError(null);
+    const fileInput = document.getElementById("proof-upload") as HTMLInputElement | null;
+    if (fileInput) {
+      fileInput.value = "";
+    }
+  };
+
   const onSubmit = async (data: CreateComplaintFormData) => {
     setServerError(null);
+    setFileError(null);
 
-    const result = await createComplaintAction(data);
+    let uploadedAttachments: AttachmentRefDTO[] = [];
+
+    // Step 1: Upload proof if selected
+    if (selectedFile) {
+      setIsUploading(true);
+      const formData = new FormData();
+      formData.append("file", selectedFile);
+
+      const uploadResult = await uploadComplaintAttachmentAction(formData);
+      setIsUploading(false);
+
+      if (!uploadResult.success || !uploadResult.data) {
+        setServerError(
+          uploadResult.error || "Failed to upload proof attachment. Please try again.",
+        );
+        return;
+      }
+
+      uploadedAttachments = [uploadResult.data];
+    }
+
+    // Step 2: Submit grievance with attachment metadata
+    const payload: CreateComplaintFormData = {
+      ...data,
+      attachments: uploadedAttachments,
+    };
+
+    const result = await createComplaintAction(payload);
 
     if (!result.success || !result.data) {
       setServerError(result.error || "Failed to submit grievance. Please try again.");
@@ -84,6 +176,7 @@ export function ComplaintForm() {
       category: data.category,
       priority: data.priority,
       departmentName: departmentConfig?.departmentName || "General Department",
+      attachmentName: selectedFile ? selectedFile.name : null,
       submittedAt: new Date().toLocaleString("en-IN", {
         dateStyle: "medium",
         timeStyle: "short",
@@ -93,6 +186,8 @@ export function ComplaintForm() {
 
   const handleResetForm = () => {
     reset();
+    setSelectedFile(null);
+    setFileError(null);
     setReceipt(null);
     setServerError(null);
   };
@@ -180,6 +275,17 @@ export function ComplaintForm() {
                 </span>
                 <p className="text-[#0F172A]">{receipt.submittedAt}</p>
               </div>
+
+              {receipt.attachmentName && (
+                <div className="sm:col-span-2 border-t border-[#E2E8F0] pt-2 mt-1">
+                  <span className="text-xs text-[#64748B] block font-medium uppercase">
+                    Attached Proof
+                  </span>
+                  <p className="text-xs font-semibold text-emerald-800 flex items-center gap-1.5 mt-0.5">
+                    📎 {receipt.attachmentName} (Attached successfully)
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -298,27 +404,100 @@ export function ComplaintForm() {
             </div>
           </div>
 
-          {/* Informational Attachments Section (M2 Scope) */}
-          <div className="rounded-lg border border-dashed border-[#CBD5E1] bg-[#F8FAFC] p-4 flex items-start gap-3">
-            <div className="text-[#64748B] mt-0.5 flex-shrink-0" aria-hidden="true">
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1.5}
-                  d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 7.373L8.552 18.32a1.5 1.5 0 01-2.122-2.122l8.76-8.76"
-                />
-              </svg>
-            </div>
-            <div className="text-xs text-[#475569]">
-              <strong className="text-[#0F172A] block font-semibold mb-0.5">
-                Attachments
-              </strong>
-              <span>
-                File attachment upload (supporting PDF, JPEG, PNG documents under 10MB) will
-                be available in a future update.
-              </span>
-            </div>
+          {/* Proof / Attachment Upload Section */}
+          <div className="flex flex-col gap-2">
+            <label className="text-xs font-semibold uppercase tracking-wider text-[#334155]">
+              Proof / Attachment (Optional)
+            </label>
+
+            {!selectedFile ? (
+              <div className="rounded-lg border border-dashed border-[#CBD5E1] bg-[#F8FAFC] p-4 transition-colors hover:border-[#94A3B8]">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#F1F5F9] text-[#64748B]">
+                      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 7.373L8.552 18.32a1.5 1.5 0 01-2.122-2.122l8.76-8.76" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-[#0F172A]">Attach Proof</p>
+                      <p className="text-[11px] text-[#64748B]">
+                        Optional — JPG, PNG or PDF up to 10 MB
+                      </p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <input
+                      id="proof-upload"
+                      type="file"
+                      accept=".jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf"
+                      className="sr-only"
+                      onChange={handleFileSelect}
+                      disabled={isSubmitting || isUploading}
+                      aria-label="Upload proof or supporting document"
+                    />
+                    <label
+                      htmlFor="proof-upload"
+                      tabIndex={0}
+                      role="button"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          document.getElementById("proof-upload")?.click();
+                        }
+                      }}
+                      className={`inline-flex items-center justify-center px-3.5 py-1.5 text-xs font-semibold rounded-md border border-[#CBD5E1] bg-white text-[#334155] hover:bg-[#F8FAFC] hover:border-[#94A3B8] cursor-pointer shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6B1724] ${
+                        isSubmitting || isUploading ? "opacity-50 pointer-events-none" : ""
+                      }`}
+                    >
+                      Attach Proof
+                    </label>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] p-4 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-50 text-emerald-700 flex-shrink-0">
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                    </svg>
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs font-semibold text-[#0F172A] truncate" title={selectedFile.name}>
+                        📎 {selectedFile.name}
+                      </p>
+                      <span className="text-[10px] font-medium bg-[#E2E8F0] text-[#475569] px-1.5 py-0.5 rounded">
+                        {formatFileSize(selectedFile.size)}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-emerald-700 font-medium mt-0.5">
+                      ✓ Ready to upload with grievance
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <button
+                    type="button"
+                    onClick={handleRemoveFile}
+                    disabled={isSubmitting || isUploading}
+                    className="px-2.5 py-1 text-xs font-medium text-[#B91C1C] hover:text-[#991B1B] hover:bg-[#FEE2E2] rounded transition-colors disabled:opacity-50 cursor-pointer"
+                    aria-label="Remove attached proof"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {fileError && (
+              <p role="alert" className="text-xs text-[#B91C1C] font-medium mt-1">
+                {fileError}
+              </p>
+            )}
           </div>
         </CardContent>
 
@@ -332,10 +511,14 @@ export function ComplaintForm() {
             type="submit"
             variant="primary"
             size="md"
-            isLoading={isSubmitting}
-            disabled={isSubmitting}
+            isLoading={isSubmitting || isUploading}
+            disabled={isSubmitting || isUploading}
           >
-            {isSubmitting ? "Registering Grievance…" : "Submit Grievance"}
+            {isUploading
+              ? "Uploading proof..."
+              : isSubmitting
+              ? "Registering Grievance…"
+              : "Submit Grievance"}
           </Button>
         </CardFooter>
       </form>

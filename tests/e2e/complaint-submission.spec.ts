@@ -130,3 +130,97 @@ test.describe("Server Authorization & Role Policy Verification", () => {
     });
   });
 });
+
+test.describe("Proof & Attachment Validation Invariants", () => {
+  const {
+    attachmentRefSchema,
+    ALLOWED_ATTACHMENT_MIME_TYPES,
+    MAX_ATTACHMENT_SIZE_BYTES,
+  } = require("@/shared/validation/validation");
+
+  test("accepts valid JPG, PNG, and PDF attachments under 10MB", () => {
+    const validJpg = {
+      storagePath: "complaints/CTS-20260913-0001/attachments/hostel_leak.jpg",
+      fileName: "hostel_leak.jpg",
+      fileSize: 245 * 1024,
+      mimeType: "image/jpeg",
+    };
+    expect(attachmentRefSchema.safeParse(validJpg).success).toBe(true);
+
+    const validPng = {
+      storagePath: "complaints/CTS-20260913-0002/attachments/receipt.png",
+      fileName: "receipt.png",
+      fileSize: 1024 * 1024,
+      mimeType: "image/png",
+    };
+    expect(attachmentRefSchema.safeParse(validPng).success).toBe(true);
+
+    const validPdf = {
+      storagePath: "complaints/CTS-20260913-0003/attachments/application.pdf",
+      fileName: "application.pdf",
+      fileSize: 5 * 1024 * 1024,
+      mimeType: "application/pdf",
+    };
+    expect(attachmentRefSchema.safeParse(validPdf).success).toBe(true);
+  });
+
+  test("rejects attachment exceeding 10 MB limit", () => {
+    const oversize = {
+      storagePath: "complaints/CTS-20260913-0004/attachments/large_recording.mp4",
+      fileName: "large_recording.mp4",
+      fileSize: MAX_ATTACHMENT_SIZE_BYTES + 1,
+      mimeType: "image/jpeg",
+    };
+    const result = attachmentRefSchema.safeParse(oversize);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0]?.message).toMatch(/exceeds maximum allowed size of 10MB/i);
+    }
+  });
+
+  test("rejects unsupported MIME types (e.g. executable, zip, javascript)", () => {
+    const invalidTypes = ["application/x-msdownload", "application/zip", "text/javascript", "video/mp4"];
+    invalidTypes.forEach((mime) => {
+      const payload = {
+        storagePath: "complaints/CTS-20260913-0005/attachments/payload.bin",
+        fileName: "payload.bin",
+        fileSize: 1024,
+        mimeType: mime,
+      };
+      const result = attachmentRefSchema.safeParse(payload);
+      expect(result.success).toBe(false);
+    });
+  });
+
+  test("createComplaintSchema accepts grievance with valid attachment payload", () => {
+    const validWithProof = {
+      title: "Water Leakage in Block B Ground Floor",
+      description: "Severe water leakage observed near the electrical control panel in Block B corridor.",
+      category: COMPLAINT_CATEGORIES.MAINTENANCE,
+      priority: COMPLAINT_PRIORITIES.CRITICAL,
+      location: "Block B Corridor Ground Floor",
+      attachments: [
+        {
+          storagePath: "complaints/CTS-20260913-9999/attachments/water_pipe.jpg",
+          fileName: "water_pipe.jpg",
+          fileSize: 500 * 1024,
+          mimeType: "image/jpeg",
+        },
+      ],
+    };
+    const result = createComplaintSchema.safeParse(validWithProof);
+    expect(result.success).toBe(true);
+  });
+
+  test("createComplaintSchema accepts grievance without attachments (optional proof)", () => {
+    const validWithoutProof = {
+      title: "Library Study Room AC Inoperative",
+      description: "The air conditioning in the 2nd floor library study room is not cooling properly.",
+      category: COMPLAINT_CATEGORIES.MAINTENANCE,
+      priority: COMPLAINT_PRIORITIES.MEDIUM,
+      attachments: [],
+    };
+    const result = createComplaintSchema.safeParse(validWithoutProof);
+    expect(result.success).toBe(true);
+  });
+});

@@ -13,6 +13,7 @@
 "use server";
 
 import { getAuthenticatedUser } from "@/server/auth/authorization";
+import { getAdminStorage } from "@/server/firebase/admin";
 import {
   createComplaint,
   updateComplaintStatus,
@@ -22,19 +23,117 @@ import {
 } from "./service";
 import {
   resolveComplaintSchema,
+  ALLOWED_ATTACHMENT_MIME_TYPES,
+  MAX_ATTACHMENT_SIZE_BYTES,
   type CreateComplaintInput,
   type CreateComplaintFormData,
   type UpdateComplaintStatusInput,
   type AssignComplaintInput,
   type SubmitFeedbackInput,
 } from "@/shared/validation/validation";
-import { USER_ROLES } from "@/shared/types";
+import { USER_ROLES, type AttachmentRefDTO } from "@/shared/types";
 import { revalidatePath } from "next/cache";
 
 export interface ActionResponse<T = unknown> {
   success: boolean;
   data?: T;
   error?: string;
+}
+
+/**
+ * Server Action: Uploads a supporting grievance attachment to Firebase Storage.
+ * Enforces session authentication, file size limit (10MB), and MIME whitelist.
+ */
+export async function uploadComplaintAttachmentAction(
+  formData: FormData,
+): Promise<ActionResponse<AttachmentRefDTO>> {
+  try {
+    const userContext = await getAuthenticatedUser();
+    if (!userContext) {
+      return { success: false, error: "Authentication required to upload proof." };
+    }
+
+    if (!userContext.profile.isActive) {
+      return { success: false, error: "Inactive accounts cannot upload attachments." };
+    }
+
+    if (userContext.profile.role === USER_ROLES.DEPARTMENT_OFFICER) {
+      return { success: false, error: "Department officers are not permitted to submit grievances." };
+    }
+
+    const file = formData.get("file");
+    if (!file || !(file instanceof Blob)) {
+      return { success: false, error: "No file provided for upload." };
+    }
+
+    const fileName = (file as File).name || "attachment";
+    const fileSize = file.size;
+    const mimeType = file.type || "application/octet-stream";
+
+    // Validate size
+    if (fileSize <= 0) {
+      return { success: false, error: "The selected file is empty." };
+    }
+    if (fileSize > MAX_ATTACHMENT_SIZE_BYTES) {
+      return { success: false, error: "File must be JPG, PNG, or PDF and smaller than 10 MB." };
+    }
+
+    // Validate MIME type
+    const isMimeAllowed = ALLOWED_ATTACHMENT_MIME_TYPES.includes(
+      mimeType as (typeof ALLOWED_ATTACHMENT_MIME_TYPES)[number],
+    );
+    if (!isMimeAllowed) {
+      return {
+        success: false,
+        error: "File must be JPG, PNG, or PDF and smaller than 10 MB.",
+      };
+    }
+
+    // Sanitize file name for safe storage path
+    const sanitizedFileName = fileName
+      .replace(/[^a-zA-Z0-9._-]/g, "_")
+      .slice(0, 100);
+
+    // Create unique folder segment adhering to storage path regex
+    const folderId = `CTS-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${Math.random()
+      .toString(36)
+      .substring(2, 6)
+      .toUpperCase()}`;
+    const storagePath = `complaints/${folderId}/attachments/${sanitizedFileName}`;
+
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const storage = getAdminStorage();
+    const bucket = storage.bucket();
+    const fileRef = bucket.file(storagePath);
+
+    await fileRef.save(buffer, {
+      metadata: {
+        contentType: mimeType,
+        metadata: {
+          uploadedBy: userContext.profile.uid,
+          originalName: fileName,
+        },
+      },
+    });
+
+    const attachment: AttachmentRefDTO = {
+      storagePath,
+      fileName,
+      fileSize,
+      mimeType,
+      uploadedAt: new Date().toISOString(),
+    };
+
+    return {
+      success: true,
+      data: attachment,
+    };
+  } catch (error: unknown) {
+    console.error("[AU-CTS Complaint Action] uploadComplaintAttachment failed:", error);
+    const message =
+      error instanceof Error ? error.message : "Failed to upload attachment.";
+    return { success: false, error: message };
+  }
 }
 
 /**
