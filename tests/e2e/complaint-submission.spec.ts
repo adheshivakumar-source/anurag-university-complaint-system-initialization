@@ -138,7 +138,7 @@ test.describe("Proof & Attachment Validation Invariants", () => {
     MAX_ATTACHMENT_SIZE_BYTES,
   } = require("@/shared/validation/validation");
 
-  test("accepts valid JPG, PNG, and PDF attachments under 10MB", () => {
+  test("accepts valid JPG, JPEG, PNG, WEBP, and PDF attachments under 10MB", () => {
     const validJpg = {
       storagePath: "complaints/CTS-20260913-0001/attachments/hostel_leak.jpg",
       fileName: "hostel_leak.jpg",
@@ -147,16 +147,32 @@ test.describe("Proof & Attachment Validation Invariants", () => {
     };
     expect(attachmentRefSchema.safeParse(validJpg).success).toBe(true);
 
+    const validJpeg = {
+      storagePath: "complaints/CTS-20260913-0002/attachments/photo_evidence.jpeg",
+      fileName: "photo_evidence.jpeg",
+      fileSize: 450 * 1024,
+      mimeType: "image/jpeg",
+    };
+    expect(attachmentRefSchema.safeParse(validJpeg).success).toBe(true);
+
     const validPng = {
-      storagePath: "complaints/CTS-20260913-0002/attachments/receipt.png",
+      storagePath: "complaints/CTS-20260913-0003/attachments/receipt.png",
       fileName: "receipt.png",
       fileSize: 1024 * 1024,
       mimeType: "image/png",
     };
     expect(attachmentRefSchema.safeParse(validPng).success).toBe(true);
 
+    const validWebp = {
+      storagePath: "complaints/CTS-20260913-0004/attachments/google_download.webp",
+      fileName: "google_download.webp",
+      fileSize: 320 * 1024,
+      mimeType: "image/webp",
+    };
+    expect(attachmentRefSchema.safeParse(validWebp).success).toBe(true);
+
     const validPdf = {
-      storagePath: "complaints/CTS-20260913-0003/attachments/application.pdf",
+      storagePath: "complaints/CTS-20260913-0005/attachments/application.pdf",
       fileName: "application.pdf",
       fileSize: 5 * 1024 * 1024,
       mimeType: "application/pdf",
@@ -166,10 +182,10 @@ test.describe("Proof & Attachment Validation Invariants", () => {
 
   test("rejects attachment exceeding 10 MB limit", () => {
     const oversize = {
-      storagePath: "complaints/CTS-20260913-0004/attachments/large_recording.mp4",
+      storagePath: "complaints/CTS-20260913-0006/attachments/large_recording.mp4",
       fileName: "large_recording.mp4",
       fileSize: MAX_ATTACHMENT_SIZE_BYTES + 1,
-      mimeType: "image/jpeg",
+      mimeType: "image/webp",
     };
     const result = attachmentRefSchema.safeParse(oversize);
     expect(result.success).toBe(false);
@@ -178,11 +194,11 @@ test.describe("Proof & Attachment Validation Invariants", () => {
     }
   });
 
-  test("rejects unsupported MIME types (e.g. executable, zip, javascript)", () => {
-    const invalidTypes = ["application/x-msdownload", "application/zip", "text/javascript", "video/mp4"];
+  test("rejects unsupported MIME types (e.g. executable, zip, javascript, video)", () => {
+    const invalidTypes = ["application/x-msdownload", "application/zip", "text/javascript", "video/mp4", "application/x-sh"];
     invalidTypes.forEach((mime) => {
       const payload = {
-        storagePath: "complaints/CTS-20260913-0005/attachments/payload.bin",
+        storagePath: "complaints/CTS-20260913-0007/attachments/payload.bin",
         fileName: "payload.bin",
         fileSize: 1024,
         mimeType: mime,
@@ -192,8 +208,8 @@ test.describe("Proof & Attachment Validation Invariants", () => {
     });
   });
 
-  test("createComplaintSchema accepts grievance with valid attachment payload", () => {
-    const validWithProof = {
+  test("createComplaintSchema accepts grievance with valid WEBP attachment payload", () => {
+    const validWithWebp = {
       title: "Water Leakage in Block B Ground Floor",
       description: "Severe water leakage observed near the electrical control panel in Block B corridor.",
       category: COMPLAINT_CATEGORIES.MAINTENANCE,
@@ -201,14 +217,14 @@ test.describe("Proof & Attachment Validation Invariants", () => {
       location: "Block B Corridor Ground Floor",
       attachments: [
         {
-          storagePath: "complaints/CTS-20260913-9999/attachments/water_pipe.jpg",
-          fileName: "water_pipe.jpg",
+          storagePath: "complaints/CTS-20260913-9999/attachments/water_pipe.webp",
+          fileName: "water_pipe.webp",
           fileSize: 500 * 1024,
-          mimeType: "image/jpeg",
+          mimeType: "image/webp",
         },
       ],
     };
-    const result = createComplaintSchema.safeParse(validWithProof);
+    const result = createComplaintSchema.safeParse(validWithWebp);
     expect(result.success).toBe(true);
   });
 

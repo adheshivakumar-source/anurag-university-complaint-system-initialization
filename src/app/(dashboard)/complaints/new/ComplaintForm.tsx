@@ -94,22 +94,23 @@ export function ComplaintForm() {
       "image/jpeg",
       "image/jpg",
       "image/png",
+      "image/webp",
       "application/pdf",
     ];
-    const validExtensions = [".jpg", ".jpeg", ".png", ".pdf"];
+    const validExtensions = [".jpg", ".jpeg", ".png", ".webp", ".pdf"];
     const fileExt = "." + file.name.split(".").pop()?.toLowerCase();
 
     const isMimeValid = validMimes.includes(file.type.toLowerCase());
     const isExtValid = validExtensions.includes(fileExt);
 
     if (!isMimeValid && !isExtValid) {
-      setFileError("File must be JPG, PNG, or PDF and smaller than 10 MB.");
+      setFileError("File must be JPG, PNG, WEBP, or PDF and smaller than 10 MB.");
       e.target.value = "";
       return;
     }
 
     if (file.size > maxBytes) {
-      setFileError("File must be JPG, PNG, or PDF and smaller than 10 MB.");
+      setFileError("File must be JPG, PNG, WEBP, or PDF and smaller than 10 MB.");
       e.target.value = "";
       return;
     }
@@ -421,7 +422,7 @@ export function ComplaintForm() {
                     <div>
                       <p className="text-xs font-semibold text-[#0F172A]">Attach Proof</p>
                       <p className="text-[11px] text-[#64748B]">
-                        Optional — JPG, PNG or PDF up to 10 MB
+                        Optional — JPG, PNG, WEBP, or PDF up to 10 MB
                       </p>
                     </div>
                   </div>
@@ -430,7 +431,7 @@ export function ComplaintForm() {
                     <input
                       id="proof-upload"
                       type="file"
-                      accept=".jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf"
+                      accept=".jpg,.jpeg,.png,.webp,.pdf,image/jpeg,image/png,image/webp,application/pdf"
                       className="sr-only"
                       onChange={handleFileSelect}
                       disabled={isSubmitting || isUploading}

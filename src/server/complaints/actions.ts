@@ -75,7 +75,7 @@ export async function uploadComplaintAttachmentAction(
       return { success: false, error: "The selected file is empty." };
     }
     if (fileSize > MAX_ATTACHMENT_SIZE_BYTES) {
-      return { success: false, error: "File must be JPG, PNG, or PDF and smaller than 10 MB." };
+      return { success: false, error: "File must be JPG, PNG, WEBP, or PDF and smaller than 10 MB." };
     }
 
     // Validate MIME type
@@ -85,7 +85,7 @@ export async function uploadComplaintAttachmentAction(
     if (!isMimeAllowed) {
       return {
         success: false,
-        error: "File must be JPG, PNG, or PDF and smaller than 10 MB.",
+        error: "File must be JPG, PNG, WEBP, or PDF and smaller than 10 MB.",
       };
     }
 

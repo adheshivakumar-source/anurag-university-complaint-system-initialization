@@ -79,8 +79,6 @@ export const ALLOWED_ATTACHMENT_MIME_TYPES = [
   "image/png",
   "image/webp",
   "application/pdf",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  "text/plain",
 ] as const;
 
 export const MAX_ATTACHMENT_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
@@ -119,7 +117,7 @@ export const attachmentRefSchema = z.object({
         ),
       {
         message:
-          "Unsupported file type. Allowed types: JPEG, PNG, WebP, PDF, DOCX, TXT",
+          "File must be JPG, PNG, WEBP, or PDF and smaller than 10 MB.",
       },
     ),
   uploadedAt: z.coerce.date().optional(),
