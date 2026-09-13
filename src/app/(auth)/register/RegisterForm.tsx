@@ -14,6 +14,8 @@ import { registerAction } from "@/server/auth/actions";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { anuragEmailSchema } from "@/shared/validation/validation";
+import { useToast } from "@/components/ui/Toast";
+import { mapAuthError } from "@/utils/auth-errors";
 import { USER_ROLES } from "@/shared/types";
 import type { UserRole } from "@/shared/types";
 
@@ -44,17 +46,9 @@ const registerSchema = z
 
 type RegisterFormData = z.infer<typeof registerSchema>;
 
-const FIREBASE_ERROR_MESSAGES: Record<string, string> = {
-  "auth/email-already-in-use":
-    "An account already exists with this email address. Please sign in instead.",
-  "auth/invalid-email": "The email address is invalid.",
-  "auth/weak-password": "The password is too weak.",
-  "auth/operation-not-allowed":
-    "Email/password accounts are not enabled. Contact IT support.",
-};
-
 export function RegisterForm() {
   const [serverError, setServerError] = useState<string | null>(null);
+  const toast = useToast();
 
   const {
     register,
@@ -106,22 +100,41 @@ export function RegisterForm() {
       );
 
       if (result?.error) {
-        setServerError(result.error);
+        const mapped = mapAuthError(result.error);
+        setServerError(mapped.message);
+        toast.error(mapped.message, { title: mapped.title });
+      } else {
+        toast.success("Your AU-CTS account has been created successfully.", {
+          title: "Account created!",
+        });
       }
     } catch (error: unknown) {
       const firebaseError = error as { code?: string; message?: string };
       const code = firebaseError.code ?? "";
-      setServerError(
-        FIREBASE_ERROR_MESSAGES[code] ??
-          firebaseError.message ??
-          "Registration failed. Please try again.",
-      );
+      if (process.env.NODE_ENV === "development") {
+        console.error(
+          "[AU-CTS Auth] Firebase register error:",
+          code || (error instanceof Error ? error.message : "unknown_error"),
+        );
+      }
+      const mapped = mapAuthError(code || (error instanceof Error ? error.message : ""));
+      setServerError(mapped.message);
+      toast.error(mapped.message, { title: mapped.title });
+    }
+  };
+
+  const onInvalid = (fieldErrors: typeof errors) => {
+    if (fieldErrors.email?.message?.includes("@anurag.edu.in")) {
+      toast.error("Please use your @anurag.edu.in email address.", {
+        title: "University email required",
+      });
     }
   };
 
   return (
     <form
-      onSubmit={handleSubmit(onSubmit)}
+      method="post"
+      onSubmit={handleSubmit(onSubmit, onInvalid)}
       noValidate
       className="flex flex-col gap-4"
     >

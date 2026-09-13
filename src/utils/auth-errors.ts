@@ -1,0 +1,91 @@
+// src/utils/auth-errors.ts
+// ============================================================
+// Centralized authentication error message mapper for AU-CTS.
+// Ensures user-friendly, secure, institutional error messages.
+// Never exposes raw Firebase internals, credentials, or tokens.
+// ============================================================
+
+export interface MappedAuthError {
+  title?: string;
+  message: string;
+}
+
+export function mapAuthError(codeOrMessage: string | undefined | null): MappedAuthError {
+  if (!codeOrMessage) {
+    return {
+      message: "Something went wrong. Please try again.",
+    };
+  }
+
+  const raw = codeOrMessage.trim();
+
+  // Check for university email domain restriction
+  if (
+    raw.toLowerCase().includes("@anurag.edu.in") ||
+    raw.toLowerCase().includes("university") ||
+    raw.toLowerCase().includes("domain")
+  ) {
+    return {
+      title: "University email required",
+      message: "Please use your @anurag.edu.in email address.",
+    };
+  }
+
+  switch (raw) {
+    case "auth/invalid-credential":
+    case "auth/wrong-password":
+      return {
+        message: "The email or password is incorrect.",
+      };
+
+    case "auth/user-not-found":
+      return {
+        message: "No account was found with this email.",
+      };
+
+    case "auth/email-already-in-use":
+      return {
+        message: "An account already exists with this email. Please sign in instead.",
+      };
+
+    case "auth/weak-password":
+      return {
+        message: "Please choose a stronger password.",
+      };
+
+    case "auth/too-many-requests":
+      return {
+        message: "Too many attempts. Please wait a moment and try again.",
+      };
+
+    case "auth/user-disabled":
+      return {
+        message: "This account has been disabled. Please contact the administrator.",
+      };
+
+    case "auth/network-request-failed":
+      return {
+        message: "Network connection error. Please check your connection.",
+      };
+
+    case "auth/invalid-email":
+      return {
+        message: "Please enter a valid email address.",
+      };
+
+    case "auth/operation-not-allowed":
+      return {
+        message: "Email/password accounts are not enabled. Contact IT support.",
+      };
+
+    default:
+      if (raw.startsWith("auth/")) {
+        return {
+          message: "Authentication failed. Please check your credentials.",
+        };
+      }
+      return {
+        message: raw || "Something went wrong. Please try again.",
+      };
+  }
+}

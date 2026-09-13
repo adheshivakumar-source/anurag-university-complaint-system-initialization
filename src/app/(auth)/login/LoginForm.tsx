@@ -15,6 +15,8 @@ import { signInAction } from "@/server/auth/actions";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { anuragEmailSchema } from "@/shared/validation/validation";
+import { useToast } from "@/components/ui/Toast";
+import { mapAuthError } from "@/utils/auth-errors";
 
 const loginSchema = z.object({
   email: anuragEmailSchema,
@@ -31,24 +33,9 @@ interface LoginFormProps {
   initialError?: string;
 }
 
-const FIREBASE_ERROR_MESSAGES: Record<string, string> = {
-  "auth/user-not-found": "No account found with this email address.",
-  "auth/wrong-password": "Incorrect password. Please try again.",
-  "auth/invalid-credential": "Invalid email or password. Please check your credentials.",
-  "auth/user-disabled": "This account has been disabled. Please contact the administrator.",
-  "auth/too-many-requests":
-    "Too many failed attempts. Please wait a moment before trying again.",
-  "auth/network-request-failed":
-    "Network error. Please check your connection and try again.",
-  "auth/invalid-email": "The email address format is invalid.",
-  "auth/operation-not-allowed":
-    "Email/Password sign-in is not enabled for this project. Contact IT support.",
-  "auth/configuration-not-found":
-    "Authentication is not configured. Contact IT support.",
-};
-
 export function LoginForm({ redirectTo, initialError }: LoginFormProps) {
   const [serverError, setServerError] = useState<string | null>(initialError || null);
+  const toast = useToast();
 
   const {
     register,
@@ -77,7 +64,13 @@ export function LoginForm({ redirectTo, initialError }: LoginFormProps) {
       const result = await signInAction(idToken, redirectTo ?? "/dashboard");
 
       if (result?.error) {
-        setServerError(result.error);
+        const mapped = mapAuthError(result.error);
+        setServerError(mapped.message);
+        toast.error(mapped.message, { title: mapped.title });
+      } else {
+        toast.success("You have successfully signed in to AU-CTS.", {
+          title: "Welcome back!",
+        });
       }
     } catch (error: unknown) {
       const firebaseError = error as { code?: string; message?: string };
@@ -89,16 +82,27 @@ export function LoginForm({ redirectTo, initialError }: LoginFormProps) {
           code || (error instanceof Error ? error.message : "unknown_error"),
         );
       }
-      setServerError(
-        (code ? FIREBASE_ERROR_MESSAGES[code] : undefined) ??
-          firebaseError.message ??
-          "Sign in failed. Please check your credentials and try again.",
-      );
+      const mapped = mapAuthError(code || (error instanceof Error ? error.message : ""));
+      setServerError(mapped.message);
+      toast.error(mapped.message, { title: mapped.title });
+    }
+  };
+
+  const onInvalid = (fieldErrors: typeof errors) => {
+    if (fieldErrors.email?.message?.includes("@anurag.edu.in")) {
+      toast.error("Please use your @anurag.edu.in email address.", {
+        title: "University email required",
+      });
     }
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-5">
+    <form
+      method="post"
+      onSubmit={handleSubmit(onSubmit, onInvalid)}
+      noValidate
+      className="flex flex-col gap-5"
+    >
       {serverError && (
         <div
           role="alert"

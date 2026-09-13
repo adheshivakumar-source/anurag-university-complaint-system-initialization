@@ -274,3 +274,82 @@ test.describe("AU-CTS Authentication Domain Invariants & Normalization", () => {
     }
   });
 });
+
+test.describe("AU-CTS Authentication Error Mapping & Toast Feedback", () => {
+  const { mapAuthError } = require("../../src/utils/auth-errors");
+
+  test("maps invalid credential error to user-friendly message", () => {
+    const res = mapAuthError("auth/invalid-credential");
+    expect(res.message).toBe("The email or password is incorrect.");
+  });
+
+  test("maps wrong password error to user-friendly message", () => {
+    const res = mapAuthError("auth/wrong-password");
+    expect(res.message).toBe("The email or password is incorrect.");
+  });
+
+  test("maps user not found error to user-friendly message", () => {
+    const res = mapAuthError("auth/user-not-found");
+    expect(res.message).toBe("No account was found with this email.");
+  });
+
+  test("maps email already in use error to user-friendly message", () => {
+    const res = mapAuthError("auth/email-already-in-use");
+    expect(res.message).toBe("An account already exists with this email. Please sign in instead.");
+  });
+
+  test("maps weak password error to user-friendly message", () => {
+    const res = mapAuthError("auth/weak-password");
+    expect(res.message).toBe("Please choose a stronger password.");
+  });
+
+  test("maps too many requests error to user-friendly message", () => {
+    const res = mapAuthError("auth/too-many-requests");
+    expect(res.message).toBe("Too many attempts. Please wait a moment and try again.");
+  });
+
+  test("maps domain error with institutional title and message", () => {
+    const res = mapAuthError("Only Anurag University (@anurag.edu.in) accounts are permitted.");
+    expect(res.title).toBe("University email required");
+    expect(res.message).toBe("Please use your @anurag.edu.in email address.");
+  });
+
+  test("safely maps null, undefined, or empty error to generic message", () => {
+    expect(mapAuthError(null).message).toBe("Something went wrong. Please try again.");
+    expect(mapAuthError(undefined).message).toBe("Something went wrong. Please try again.");
+    expect(mapAuthError("").message).toBe("Something went wrong. Please try again.");
+  });
+});
+
+test.describe("AU-CTS Auth Toast Notifications in UI", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.context().clearCookies();
+  });
+
+  test("login form displays toast notification on domain rejection", async ({ page }) => {
+    await page.goto(`${BASE_URL}/login`);
+    await page.getByLabel(/institutional email/i).fill("outsider@gmail.com");
+    await page.getByLabel(/password/i).fill("SecretPass123");
+    await page.getByRole("button", { name: /sign in/i }).click();
+
+    // Check toast popup renders
+    const toast = page.locator("[data-testid='toast-item']");
+    await expect(toast).toBeVisible();
+    await expect(toast).toContainText(/University email required/i);
+    await expect(toast).toContainText(/@anurag\.edu\.in/i);
+  });
+
+  test("registration form displays toast notification on domain rejection", async ({ page }) => {
+    await page.goto(`${BASE_URL}/register`);
+    await page.getByLabel(/full name/i).fill("Test Student");
+    await page.getByLabel(/institutional email/i).fill("outsider@outlook.com");
+    await page.getByLabel(/^password/i).fill("Password123");
+    await page.getByLabel(/confirm password/i).fill("Password123");
+    await page.getByRole("button", { name: /register institutional account/i }).click();
+
+    const toast = page.locator("[data-testid='toast-item']");
+    await expect(toast).toBeVisible();
+    await expect(toast).toContainText(/University email required/i);
+    await expect(toast).toContainText(/@anurag\.edu\.in/i);
+  });
+});
