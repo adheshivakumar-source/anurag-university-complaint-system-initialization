@@ -5,9 +5,32 @@
 // Never exposes raw Firebase internals, credentials, or tokens.
 // ============================================================
 
+import { isRedirectError } from "next/dist/client/components/redirect-error";
+
 export interface MappedAuthError {
   title?: string;
   message: string;
+}
+
+/**
+ * Checks whether an error is a Next.js redirect signal/exception.
+ * Ensures server action and navigation redirects are not incorrectly treated
+ * as application or authentication errors.
+ */
+export function isNextRedirect(error: unknown): boolean {
+  if (isRedirectError(error)) {
+    return true;
+  }
+  if (typeof error === "object" && error !== null) {
+    const err = error as { digest?: unknown; message?: unknown };
+    if (typeof err.digest === "string" && err.digest.startsWith("NEXT_REDIRECT")) {
+      return true;
+    }
+    if (typeof err.message === "string" && err.message.includes("NEXT_REDIRECT")) {
+      return true;
+    }
+  }
+  return false;
 }
 
 export function mapAuthError(codeOrMessage: string | undefined | null): MappedAuthError {

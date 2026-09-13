@@ -276,7 +276,7 @@ test.describe("AU-CTS Authentication Domain Invariants & Normalization", () => {
 });
 
 test.describe("AU-CTS Authentication Error Mapping & Toast Feedback", () => {
-  const { mapAuthError } = require("../../src/utils/auth-errors");
+  const { mapAuthError, isNextRedirect } = require("../../src/utils/auth-errors");
 
   test("maps invalid credential error to user-friendly message", () => {
     const res = mapAuthError("auth/invalid-credential");
@@ -319,6 +319,16 @@ test.describe("AU-CTS Authentication Error Mapping & Toast Feedback", () => {
     expect(mapAuthError(undefined).message).toBe("Something went wrong. Please try again.");
     expect(mapAuthError("").message).toBe("Something went wrong. Please try again.");
   });
+
+  test("isNextRedirect identifies Next.js NEXT_REDIRECT digest signals", () => {
+    expect(isNextRedirect({ digest: "NEXT_REDIRECT;replace;/dashboard;307;" })).toBe(true);
+    expect(isNextRedirect({ digest: "NEXT_REDIRECT;push;/login;307;" })).toBe(true);
+    expect(isNextRedirect(new Error("NEXT_REDIRECT"))).toBe(true);
+    expect(isNextRedirect(new Error("auth/invalid-credential"))).toBe(false);
+    expect(isNextRedirect(null)).toBe(false);
+    expect(isNextRedirect(undefined)).toBe(false);
+    expect(isNextRedirect("string error")).toBe(false);
+  });
 });
 
 test.describe("AU-CTS Auth Toast Notifications in UI", () => {
@@ -353,9 +363,16 @@ test.describe("AU-CTS Auth Toast Notifications in UI", () => {
     await expect(toast).toContainText(/@anurag\.edu\.in/i);
   });
 
-  test("login form displays 'Account not registered' toast and registration action for unregistered anurag email", async ({
+  test("login form displays 'Account not registered' toast and registration action for unregistered anurag email without console noise", async ({
     page,
   }) => {
+    const consoleErrors: string[] = [];
+    page.on("console", (msg) => {
+      if (msg.type() === "error") {
+        consoleErrors.push(msg.text());
+      }
+    });
+
     await page.goto(`${BASE_URL}/login`);
     await page
       .getByLabel(/institutional email/i)
@@ -382,5 +399,11 @@ test.describe("AU-CTS Auth Toast Notifications in UI", () => {
     await expect(
       inlineAlert.getByRole("link", { name: /Go to Registration/i }),
     ).toBeVisible();
+
+    // Verify no [AU-CTS Auth] console.error was printed for this expected state
+    const authErrorsInConsole = consoleErrors.filter((msg) =>
+      msg.includes("[AU-CTS Auth]"),
+    );
+    expect(authErrorsInConsole).toHaveLength(0);
   });
 });

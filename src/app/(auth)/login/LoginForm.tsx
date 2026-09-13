@@ -20,7 +20,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { anuragEmailSchema } from "@/shared/validation/validation";
 import { useToast } from "@/components/ui/Toast";
-import { mapAuthError } from "@/utils/auth-errors";
+import { mapAuthError, isNextRedirect } from "@/utils/auth-errors";
 
 const loginSchema = z.object({
   email: anuragEmailSchema,
@@ -80,18 +80,19 @@ export function LoginForm({ redirectTo, initialError }: LoginFormProps) {
         });
       }
     } catch (error: unknown) {
+      // Handle Next.js redirect signal without treating as an error
+      if (isNextRedirect(error)) {
+        toast.success("You have successfully signed in to AU-CTS.", {
+          title: "Welcome back!",
+        });
+        throw error;
+      }
+
       const firebaseError = error as { code?: string; message?: string };
       const code = firebaseError.code ?? "";
 
-      // Dev-only diagnostic: logs error code or error message — never logs passwords or tokens
-      if (process.env.NODE_ENV === "development") {
-        console.error(
-          "[AU-CTS Auth] Firebase sign-in error:",
-          code || (error instanceof Error ? error.message : "unknown_error"),
-        );
-      }
-
-      // Distinguish unregistered institutional email vs wrong password
+      // Expected authentication outcomes: invalid-credential or user-not-found
+      // Handled cleanly without console.error
       if (code === "auth/invalid-credential" || code === "auth/user-not-found") {
         const check = await checkInstitutionalAccountExistsAction(data.email);
         if (!check.exists) {
@@ -109,6 +110,20 @@ export function LoginForm({ redirectTo, initialError }: LoginFormProps) {
           });
           return;
         }
+
+        // Account exists, but password was incorrect: show generic secure error
+        const mapped = mapAuthError(code);
+        setServerError(mapped.message);
+        toast.error(mapped.message, { title: mapped.title });
+        return;
+      }
+
+      // Unexpected error during sign-in: log diagnostic in development (never log sensitive credentials)
+      if (process.env.NODE_ENV === "development") {
+        console.error(
+          "[AU-CTS Auth] Firebase sign-in error:",
+          code || (error instanceof Error ? error.message : "unknown_error"),
+        );
       }
 
       const mapped = mapAuthError(code || (error instanceof Error ? error.message : ""));
@@ -116,6 +131,7 @@ export function LoginForm({ redirectTo, initialError }: LoginFormProps) {
       toast.error(mapped.message, { title: mapped.title });
     }
   };
+
 
   const onInvalid = (fieldErrors: typeof errors) => {
     if (fieldErrors.email?.message?.includes("@anurag.edu.in")) {

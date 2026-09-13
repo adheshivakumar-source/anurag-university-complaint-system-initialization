@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { anuragEmailSchema } from "@/shared/validation/validation";
 import { useToast } from "@/components/ui/Toast";
-import { mapAuthError } from "@/utils/auth-errors";
+import { mapAuthError, isNextRedirect } from "@/utils/auth-errors";
 import { USER_ROLES } from "@/shared/types";
 import type { UserRole } from "@/shared/types";
 
@@ -109,14 +109,37 @@ export function RegisterForm() {
         });
       }
     } catch (error: unknown) {
+      // Handle Next.js redirect signals cleanly without treating redirect as an error
+      if (isNextRedirect(error)) {
+        toast.success("Your AU-CTS account has been created successfully.", {
+          title: "Account created!",
+        });
+        throw error;
+      }
+
       const firebaseError = error as { code?: string; message?: string };
       const code = firebaseError.code ?? "";
+
+      // Expected auth validation/state rejections (e.g. email already exists, weak password)
+      if (
+        code === "auth/email-already-in-use" ||
+        code === "auth/weak-password" ||
+        code === "auth/invalid-email"
+      ) {
+        const mapped = mapAuthError(code);
+        setServerError(mapped.message);
+        toast.error(mapped.message, { title: mapped.title });
+        return;
+      }
+
+      // Unexpected errors during registration: log diagnostic in development
       if (process.env.NODE_ENV === "development") {
         console.error(
           "[AU-CTS Auth] Firebase register error:",
           code || (error instanceof Error ? error.message : "unknown_error"),
         );
       }
+
       const mapped = mapAuthError(code || (error instanceof Error ? error.message : ""));
       setServerError(mapped.message);
       toast.error(mapped.message, { title: mapped.title });
