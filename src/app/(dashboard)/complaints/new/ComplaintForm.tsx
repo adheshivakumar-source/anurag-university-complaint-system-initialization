@@ -94,10 +94,9 @@ export function ComplaintForm() {
       "image/jpeg",
       "image/jpg",
       "image/png",
-      "image/webp",
       "application/pdf",
     ];
-    const validExtensions = [".jpg", ".jpeg", ".png", ".webp", ".pdf"];
+    const validExtensions = [".jpg", ".jpeg", ".png", ".pdf"];
     const fileExt = "." + file.name.split(".").pop()?.toLowerCase();
 
     const isMimeValid = validMimes.includes(file.type.toLowerCase());
