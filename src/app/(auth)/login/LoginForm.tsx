@@ -14,12 +14,10 @@ import { getClientAuth } from "@/client/firebase/client";
 import { signInAction } from "@/server/auth/actions";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { anuragEmailSchema } from "@/shared/validation/validation";
 
 const loginSchema = z.object({
-  email: z
-    .string()
-    .min(1, "Email address is required")
-    .email("Please enter a valid email address"),
+  email: anuragEmailSchema,
   password: z
     .string()
     .min(1, "Password is required")

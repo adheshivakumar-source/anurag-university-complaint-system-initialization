@@ -96,6 +96,17 @@ test.describe("Authentication — Route Protection & Redirection", () => {
 
     await expect(page.getByText(/valid email address/i)).toBeVisible();
   });
+
+  test("login form rejects non-Anurag email domains", async ({ page }) => {
+    await page.goto(`${BASE_URL}/login`);
+    await page.getByLabel(/institutional email/i).fill("student@gmail.com");
+    await page.getByLabel(/password/i).fill("ValidPass123");
+    await page.getByRole("button", { name: /sign in/i }).click();
+
+    await expect(
+      page.getByText(/ending with @anurag\.edu\.in/i),
+    ).toBeVisible();
+  });
 });
 
 test.describe("Registration — Onboarding Validation", () => {
@@ -138,6 +149,42 @@ test.describe("Registration — Onboarding Validation", () => {
     await expect(page.getByText(/password must be at least 8/i)).toBeVisible();
   });
 
+  test("registration rejects non-Anurag email domains (gmail, outlook, yahoo)", async ({
+    page,
+  }) => {
+    await page.goto(`${BASE_URL}/register`);
+    await page.getByLabel(/full name/i).fill("Test Student");
+    await page.getByLabel(/institutional email/i).fill("student@gmail.com");
+    await page.getByLabel(/^password/i).fill("Password123");
+    await page.getByLabel(/confirm password/i).fill("Password123");
+    await page
+      .getByRole("button", { name: /register institutional account/i })
+      .click();
+
+    await expect(
+      page.getByText(/ending with @anurag\.edu\.in/i),
+    ).toBeVisible();
+  });
+
+  test("registration rejects domain attack strings and subdomains", async ({
+    page,
+  }) => {
+    await page.goto(`${BASE_URL}/register`);
+    await page.getByLabel(/full name/i).fill("Test Student");
+    await page
+      .getByLabel(/institutional email/i)
+      .fill("student@anurag.edu.in.attacker.com");
+    await page.getByLabel(/^password/i).fill("Password123");
+    await page.getByLabel(/confirm password/i).fill("Password123");
+    await page
+      .getByRole("button", { name: /register institutional account/i })
+      .click();
+
+    await expect(
+      page.getByText(/ending with @anurag\.edu\.in/i),
+    ).toBeVisible();
+  });
+
   test("registration validates password matching", async ({ page }) => {
     await page.goto(`${BASE_URL}/register`);
     await page.getByLabel(/full name/i).fill("Test Student");
@@ -165,5 +212,65 @@ test.describe("Registration — Onboarding Validation", () => {
     await expect(
       page.getByLabel(/student roll \/ registration id/i),
     ).not.toBeVisible();
+  });
+});
+
+test.describe("AU-CTS Authentication Domain Invariants & Normalization", () => {
+  const { isAnuragEmail, anuragEmailSchema } = require("../../src/shared/validation/validation");
+
+  test("accepts valid standard Anurag University email addresses", () => {
+    expect(isAnuragEmail("shivakumar@anurag.edu.in")).toBe(true);
+    expect(isAnuragEmail("ruthiraj@anurag.edu.in")).toBe(true);
+    expect(isAnuragEmail("21ag1a0501@anurag.edu.in")).toBe(true);
+  });
+
+  test("normalizes uppercase and mixed-case email addresses", () => {
+    expect(isAnuragEmail("RUTHIRAJ@ANURAG.EDU.IN")).toBe(true);
+    expect(isAnuragEmail("ShivaKumar@Anurag.Edu.In")).toBe(true);
+  });
+
+  test("normalizes leading and trailing whitespace", () => {
+    expect(isAnuragEmail("  ruthiraj@anurag.edu.in  ")).toBe(true);
+  });
+
+  test("rejects external public email domains", () => {
+    expect(isAnuragEmail("student@gmail.com")).toBe(false);
+    expect(isAnuragEmail("student@outlook.com")).toBe(false);
+    expect(isAnuragEmail("student@yahoo.com")).toBe(false);
+    expect(isAnuragEmail("student@hotmail.com")).toBe(false);
+  });
+
+  test("rejects domain spoofing and suffix attack attempts", () => {
+    expect(isAnuragEmail("student@anurag.edu.in.attacker.com")).toBe(false);
+    expect(isAnuragEmail("student@fakeanurag.edu.in")).toBe(false);
+    expect(isAnuragEmail("student@anurag.edu.in@evil.com")).toBe(false);
+  });
+
+  test("rejects subdomains of anurag.edu.in", () => {
+    expect(isAnuragEmail("student@sub.anurag.edu.in")).toBe(false);
+    expect(isAnuragEmail("foo@bar.anurag.edu.in")).toBe(false);
+  });
+
+  test("rejects missing or empty local part", () => {
+    expect(isAnuragEmail("@anurag.edu.in")).toBe(false);
+    expect(isAnuragEmail("")).toBe(false);
+    expect(isAnuragEmail(null)).toBe(false);
+    expect(isAnuragEmail(undefined)).toBe(false);
+  });
+
+  test("anuragEmailSchema parses valid input and returns normalized string", () => {
+    const parsed = anuragEmailSchema.safeParse("  USER@ANURAG.EDU.IN  ");
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.trim().toLowerCase()).toBe("user@anurag.edu.in");
+    }
+  });
+
+  test("anuragEmailSchema rejects invalid domain with institutional message", () => {
+    const result = anuragEmailSchema.safeParse("user@gmail.com");
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].message).toMatch(/ending with @anurag\.edu\.in/i);
+    }
   });
 });

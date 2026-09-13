@@ -16,6 +16,62 @@ import {
 } from "@/shared/types";
 
 /**
+ * Allowed institutional email domain for Anurag University.
+ */
+export const ANURAG_EMAIL_DOMAIN = "anurag.edu.in";
+
+/**
+ * Normalizes and validates whether an email address belongs strictly to the
+ * authorized Anurag University domain (@anurag.edu.in).
+ *
+ * Normalization & Invariants:
+ * 1. Trim leading/trailing whitespace
+ * 2. Lowercase all characters
+ * 3. Validate non-empty local part and exact domain match
+ * 4. Reject subdomains (e.g. sub.anurag.edu.in) and suffix attacks (e.g. anurag.edu.in.attacker.com)
+ */
+export function isAnuragEmail(email: string | null | undefined): boolean {
+  if (!email || typeof email !== "string") {
+    return false;
+  }
+
+  const normalized = email.trim().toLowerCase();
+
+  // Basic sanity check: no spaces inside email
+  if (/\s/.test(normalized)) {
+    return false;
+  }
+
+  const parts = normalized.split("@");
+  if (parts.length !== 2) {
+    return false;
+  }
+
+  const [localPart, domainPart] = parts;
+
+  if (!localPart || localPart.length === 0) {
+    return false;
+  }
+
+  return domainPart === ANURAG_EMAIL_DOMAIN;
+}
+
+/**
+ * Zod schema for Anurag University institutional email validation.
+ */
+export const anuragEmailSchema = z
+  .string()
+  .trim()
+  .min(1, "Email address is required")
+  .email("Please enter a valid email address")
+  .refine(
+    (val) => isAnuragEmail(val),
+    {
+      message: "Use your Anurag University email address ending with @anurag.edu.in.",
+    },
+  );
+
+/**
  * Allowed MIME types for complaint attachments.
  */
 export const ALLOWED_ATTACHMENT_MIME_TYPES = [

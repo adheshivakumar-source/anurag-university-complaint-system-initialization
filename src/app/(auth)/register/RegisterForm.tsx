@@ -13,6 +13,7 @@ import { getClientAuth } from "@/client/firebase/client";
 import { registerAction } from "@/server/auth/actions";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { anuragEmailSchema } from "@/shared/validation/validation";
 import { USER_ROLES } from "@/shared/types";
 import type { UserRole } from "@/shared/types";
 
@@ -22,10 +23,7 @@ const registerSchema = z
       .string()
       .min(2, "Full name must be at least 2 characters")
       .max(100, "Name is too long"),
-    email: z
-      .string()
-      .min(1, "Email address is required")
-      .email("Please enter a valid institutional email address"),
+    email: anuragEmailSchema,
     role: z.enum(
       [USER_ROLES.STUDENT, USER_ROLES.FACULTY, USER_ROLES.STAFF] as const,
       { message: "Please select a valid role" },

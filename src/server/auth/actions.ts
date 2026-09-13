@@ -14,12 +14,14 @@ import { redirect } from "next/navigation";
 import { getAdminAuth } from "@/server/firebase/admin";
 import { createSession, destroySession } from "./session";
 import { getOrCreateUserProfile } from "@/server/users/service";
+import { isAnuragEmail } from "@/shared/validation/validation";
 import type { UserRole, SelfRegisterRole } from "@/shared/types";
 import { USER_ROLES, SELF_REGISTER_ROLES } from "@/shared/types";
 
 /**
  * Establishes a server-side session after client-side Firebase sign-in.
- * Validates active account status before allowing session creation.
+ * Validates active account status and authorized institutional email domain
+ * before allowing session creation.
  */
 export async function signInAction(
   idToken: string,
@@ -28,10 +30,18 @@ export async function signInAction(
   try {
     const adminAuth = getAdminAuth();
     const decoded = await adminAuth.verifyIdToken(idToken);
+    const verifiedEmail = decoded.email || "";
+
+    // Security Gate: Ensure email strictly belongs to Anurag University domain
+    if (!isAnuragEmail(verifiedEmail)) {
+      return {
+        error: "Only Anurag University (@anurag.edu.in) accounts are permitted.",
+      };
+    }
 
     // Retrieve or initialize the user profile in Firestore
     const profile = await getOrCreateUserProfile(decoded.uid, {
-      email: decoded.email || "",
+      email: verifiedEmail,
       displayName: decoded.name || decoded.email || undefined,
     });
 
@@ -55,7 +65,7 @@ export async function signInAction(
 
 /**
  * Handles initial user registration after client-side account creation.
- * Enforces role whitelist (only student, faculty, staff may self-register).
+ * Enforces institutional email domain and role whitelist.
  */
 export async function registerAction(
   idToken: string,
@@ -70,6 +80,23 @@ export async function registerAction(
   try {
     const adminAuth = getAdminAuth();
     const decoded = await adminAuth.verifyIdToken(idToken);
+    const verifiedEmail = decoded.email || "";
+
+    // Security Gate: Ensure email strictly belongs to Anurag University domain
+    if (!isAnuragEmail(verifiedEmail)) {
+      // Clean up the unauthorized Firebase Auth account created by the client SDK
+      try {
+        await adminAuth.deleteUser(decoded.uid);
+      } catch (cleanupError) {
+        console.warn(
+          "[AU-CTS] Failed to cleanup unauthorized auth user:",
+          cleanupError,
+        );
+      }
+      return {
+        error: "Only Anurag University (@anurag.edu.in) accounts are permitted.",
+      };
+    }
 
     // Security Gate: Ensure role is restricted to non-privileged self-register roles
     let validatedRole: UserRole = USER_ROLES.STUDENT;
@@ -82,7 +109,7 @@ export async function registerAction(
 
     // Initialize user profile in Firestore and assign custom claims
     await getOrCreateUserProfile(decoded.uid, {
-      email: decoded.email || "",
+      email: verifiedEmail,
       displayName: payload.displayName.trim(),
       requestedRole: validatedRole,
       studentId: payload.studentId ? payload.studentId.trim() : null,
