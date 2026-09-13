@@ -18,8 +18,11 @@ export type {
   ComplaintPriority,
   ComplaintStatus,
   Complaint,
+  ComplaintDTO,
   AttachmentRef,
+  AttachmentRefDTO,
   ComplaintFeedback,
+  ComplaintFeedbackDTO,
 } from "./complaint";
 export {
   COMPLAINT_CATEGORIES,
@@ -31,7 +34,8 @@ export {
   TERMINAL_STATUSES,
 } from "./complaint";
 
-export type { AuditAction, AuditEvent } from "./audit";
+export type { AuditAction, AuditEvent, SanitizedTimelineEventDTO } from "./audit";
 export { AUDIT_ACTIONS } from "./audit";
 
 export type { RoutingRule, Department } from "./routing";
+

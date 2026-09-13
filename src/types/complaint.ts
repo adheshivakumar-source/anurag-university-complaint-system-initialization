@@ -155,6 +155,9 @@ export interface Complaint {
   resolvedAt: Date | null;
   closedAt: Date | null;
 
+  // Location
+  location?: string | null;
+
   // Resolution
   resolution: string | null;
 
@@ -174,3 +177,58 @@ export interface Complaint {
   isAnonymous: boolean;
   tags: string[];
 }
+
+/**
+ * Serializable DTO version of AttachmentRef safe to pass from Server Components to Client Components.
+ */
+export interface AttachmentRefDTO {
+  storagePath: string;
+  fileName: string;
+  fileSize: number;
+  mimeType: string;
+  uploadedAt: string;
+}
+
+/**
+ * Serializable DTO version of ComplaintFeedback.
+ */
+export interface ComplaintFeedbackDTO {
+  rating: 1 | 2 | 3 | 4 | 5;
+  comment?: string;
+  submittedAt: string;
+}
+
+/**
+ * Serializable DTO version of Complaint safe to pass from Server Components to Client Components.
+ */
+export interface ComplaintDTO {
+  complaintId: string;
+  title: string;
+  description: string;
+  category: ComplaintCategory;
+  priority: ComplaintPriority;
+  status: ComplaintStatus;
+  submittedBy: string;
+  submittedByName: string;
+  submittedAt: string;
+  departmentId: string;
+  assignedTo: string | null;
+  assignedToName: string | null;
+  assignedAt: string | null;
+  location?: string | null;
+  attachments: AttachmentRefDTO[];
+  lastUpdatedAt: string;
+  resolvedAt: string | null;
+  closedAt: string | null;
+  resolution: string | null;
+  slaDeadline: string;
+  escalationLevel: 0 | 1 | 2 | 3;
+  escalatedAt: string | null;
+  isDuplicate: boolean;
+  duplicateOf: string | null;
+  feedback: ComplaintFeedbackDTO | null;
+  isAnonymous: boolean;
+  tags: string[];
+}
+
+

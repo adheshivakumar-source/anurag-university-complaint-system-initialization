@@ -45,3 +45,18 @@ export interface AuditEvent {
   newValue?: unknown;
   note?: string;
 }
+
+/**
+ * Role-aware, sanitized timeline event DTO safe for client display.
+ * Strips raw actor UIDs and internal notes for submitters.
+ */
+export interface SanitizedTimelineEventDTO {
+  auditId: string;
+  action: AuditAction;
+  timestamp: string; // ISO string
+  actorRole: UserRole;
+  title: string;
+  description?: string;
+  badgeVariant?: string;
+}
+
