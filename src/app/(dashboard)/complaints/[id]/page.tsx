@@ -15,11 +15,18 @@ import {
   UnauthorizedComplaintAccessError,
 } from "@/lib/complaints/service";
 import { getDepartmentInfo } from "@/lib/complaints/routing";
-import { CATEGORY_LABELS, USER_ROLES, type ComplaintCategory, type AttachmentRefDTO } from "@/types";
+import {
+  CATEGORY_LABELS,
+  COMPLAINT_STATUSES,
+  USER_ROLES,
+  type ComplaintCategory,
+  type AttachmentRefDTO,
+} from "@/types";
 import { StatusBadge, PriorityBadge } from "@/components/ui/Badge";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { ComplaintTimeline } from "./ComplaintTimeline";
 import { ComplaintFeedbackSection } from "./ComplaintFeedbackSection";
+import { StartReviewButton } from "./StartReviewButton";
 
 
 interface ComplaintDetailPageProps {
@@ -77,6 +84,12 @@ export default async function ComplaintDetailPage({
   const deptInfo = getDepartmentInfo(complaint.departmentId);
   const isSubmitter = context.user.uid === complaint.submittedBy;
   const isAdmin = context.user.role === USER_ROLES.ADMIN;
+  const isDeptOfficer =
+    context.user.role === USER_ROLES.DEPARTMENT_OFFICER &&
+    (context.user.departmentId === complaint.departmentId ||
+      context.user.uid === complaint.assignedTo);
+  const canStartReview =
+    complaint.status === COMPLAINT_STATUSES.PENDING && (isAdmin || isDeptOfficer);
 
   return (
     <div className="flex flex-col gap-6 max-w-6xl mx-auto">
@@ -104,9 +117,12 @@ export default async function ComplaintDetailPage({
           </span>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <PriorityBadge priority={complaint.priority} />
           <StatusBadge status={complaint.status} />
+          {canStartReview && (
+            <StartReviewButton complaintId={complaint.complaintId} />
+          )}
         </div>
       </div>
 

@@ -260,6 +260,137 @@ test.describe("State Machine Transitions & Role Authorization", () => {
   });
 });
 
+test.describe("Phase 4.2.1: Start Review (pending -> in_review) Full Authorization & State Matrix", () => {
+  const submitterUid = "student_auth_01";
+  const officerSameDeptUid = "officer_hostel_01";
+  const officerDiffDeptUid = "officer_transport_01";
+  const officerAssignedUid = "officer_assigned_01";
+  const adminUid = "admin_super_01";
+  const facultyUid = "faculty_prof_01";
+
+  const pendingComplaint = {
+    submittedBy: submitterUid,
+    assignedTo: officerAssignedUid,
+    departmentId: "dept-hostel",
+  };
+
+  test("allows Admin to start review on pending ticket", () => {
+    const result = validateStatusTransition(
+      COMPLAINT_STATUSES.PENDING,
+      COMPLAINT_STATUSES.IN_REVIEW,
+      { uid: adminUid, role: USER_ROLES.ADMIN },
+      pendingComplaint,
+    );
+    expect(result.allowed).toBe(true);
+  });
+
+  test("allows Department Officer of the same department to start review", () => {
+    const result = validateStatusTransition(
+      COMPLAINT_STATUSES.PENDING,
+      COMPLAINT_STATUSES.IN_REVIEW,
+      { uid: officerSameDeptUid, role: USER_ROLES.DEPARTMENT_OFFICER, departmentId: "dept-hostel" },
+      pendingComplaint,
+    );
+    expect(result.allowed).toBe(true);
+  });
+
+  test("allows assigned Officer to start review even if departmentId is not matched", () => {
+    const result = validateStatusTransition(
+      COMPLAINT_STATUSES.PENDING,
+      COMPLAINT_STATUSES.IN_REVIEW,
+      { uid: officerAssignedUid, role: USER_ROLES.DEPARTMENT_OFFICER, departmentId: "dept-other" },
+      pendingComplaint,
+    );
+    expect(result.allowed).toBe(true);
+  });
+
+  test("denies Department Officer from a different department (unassigned) from starting review", () => {
+    const result = validateStatusTransition(
+      COMPLAINT_STATUSES.PENDING,
+      COMPLAINT_STATUSES.IN_REVIEW,
+      { uid: officerDiffDeptUid, role: USER_ROLES.DEPARTMENT_OFFICER, departmentId: "dept-transport" },
+      pendingComplaint,
+    );
+    expect(result.allowed).toBe(false);
+    expect(result.reason).toMatch(/administrators or assigned department officers/i);
+  });
+
+  test("denies Student from starting review", () => {
+    const result = validateStatusTransition(
+      COMPLAINT_STATUSES.PENDING,
+      COMPLAINT_STATUSES.IN_REVIEW,
+      { uid: submitterUid, role: USER_ROLES.STUDENT },
+      pendingComplaint,
+    );
+    expect(result.allowed).toBe(false);
+    expect(result.reason).toMatch(/administrators or assigned department officers/i);
+  });
+
+  test("denies Faculty from starting review", () => {
+    const result = validateStatusTransition(
+      COMPLAINT_STATUSES.PENDING,
+      COMPLAINT_STATUSES.IN_REVIEW,
+      { uid: facultyUid, role: USER_ROLES.FACULTY },
+      pendingComplaint,
+    );
+    expect(result.allowed).toBe(false);
+  });
+
+  test("denies starting review if ticket is already in_review (no self-transition)", () => {
+    const result = validateStatusTransition(
+      COMPLAINT_STATUSES.IN_REVIEW,
+      COMPLAINT_STATUSES.IN_REVIEW,
+      { uid: adminUid, role: USER_ROLES.ADMIN },
+      pendingComplaint,
+    );
+    expect(result.allowed).toBe(false);
+    expect(result.reason).toMatch(/already in status/i);
+  });
+
+  test("denies starting review when ticket is resolved", () => {
+    const result = validateStatusTransition(
+      COMPLAINT_STATUSES.RESOLVED,
+      COMPLAINT_STATUSES.IN_REVIEW,
+      { uid: adminUid, role: USER_ROLES.ADMIN },
+      pendingComplaint,
+    );
+    expect(result.allowed).toBe(false);
+  });
+
+  test("denies starting review when ticket is rejected", () => {
+    const result = validateStatusTransition(
+      COMPLAINT_STATUSES.REJECTED,
+      COMPLAINT_STATUSES.IN_REVIEW,
+      { uid: officerSameDeptUid, role: USER_ROLES.DEPARTMENT_OFFICER, departmentId: "dept-hostel" },
+      pendingComplaint,
+    );
+    expect(result.allowed).toBe(false);
+    expect(result.reason).toMatch(/terminal status/i);
+  });
+
+  test("denies starting review when ticket is duplicate", () => {
+    const result = validateStatusTransition(
+      COMPLAINT_STATUSES.DUPLICATE,
+      COMPLAINT_STATUSES.IN_REVIEW,
+      { uid: adminUid, role: USER_ROLES.ADMIN },
+      pendingComplaint,
+    );
+    expect(result.allowed).toBe(false);
+    expect(result.reason).toMatch(/terminal status/i);
+  });
+
+  test("denies starting review when ticket is closed", () => {
+    const result = validateStatusTransition(
+      COMPLAINT_STATUSES.CLOSED,
+      COMPLAINT_STATUSES.IN_REVIEW,
+      { uid: adminUid, role: USER_ROLES.ADMIN },
+      pendingComplaint,
+    );
+    expect(result.allowed).toBe(false);
+    expect(result.reason).toMatch(/terminal status/i);
+  });
+});
+
 test.describe("Complaint ID Generator", () => {
   test("generates human-readable collision-resistant CTS ID format", () => {
     const id = generateComplaintId(new Date("2026-09-11"));

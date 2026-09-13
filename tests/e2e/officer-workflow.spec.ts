@@ -20,6 +20,7 @@ import {
   COMPLAINT_STATUSES,
   STATUS_LABELS,
   TERMINAL_STATUSES,
+  USER_ROLES,
 } from "@/types";
 
 export interface SlaPresentation {
@@ -435,5 +436,90 @@ test.describe("Officer Queue — Concurrency & Atomic Pickup Protection", () => 
     // 3. Admin reassignment without requireUnassigned succeeds even if already assigned
     const adminReassign = simulatePickup("officer_winner_001", false);
     expect(adminReassign.success).toBe(true);
+  });
+});
+
+test.describe("Phase 4.2.1: Start Review UI Visibility & Server Invariants", () => {
+  const evaluateCanStartReview = (
+    user: { role: string; departmentId?: string | null; uid: string },
+    complaint: { status: string; departmentId: string; assignedTo: string | null },
+  ) => {
+    const isAdmin = user.role === USER_ROLES.ADMIN;
+    const isDeptOfficer =
+      user.role === USER_ROLES.DEPARTMENT_OFFICER &&
+      (user.departmentId === complaint.departmentId || user.uid === complaint.assignedTo);
+    return complaint.status === COMPLAINT_STATUSES.PENDING && (isAdmin || isDeptOfficer);
+  };
+
+  test("UI visibility logic allows Start Review for Admin and matching Department Officer", () => {
+    const complaint = {
+      status: COMPLAINT_STATUSES.PENDING,
+      departmentId: "dept-hostel",
+      assignedTo: "officer_hostel_01",
+    };
+
+    // 1. Admin -> visible
+    expect(
+      evaluateCanStartReview(
+        { role: USER_ROLES.ADMIN, uid: "admin_01" },
+        complaint,
+      ),
+    ).toBe(true);
+
+    // 2. Same-dept officer -> visible
+    expect(
+      evaluateCanStartReview(
+        { role: USER_ROLES.DEPARTMENT_OFFICER, departmentId: "dept-hostel", uid: "officer_hostel_02" },
+        complaint,
+      ),
+    ).toBe(true);
+
+    // 3. Assigned officer (even if departmentId null/different) -> visible
+    expect(
+      evaluateCanStartReview(
+        { role: USER_ROLES.DEPARTMENT_OFFICER, departmentId: null, uid: "officer_hostel_01" },
+        complaint,
+      ),
+    ).toBe(true);
+  });
+
+  test("UI visibility logic hides Start Review for unauthorized viewers or non-pending statuses", () => {
+    const pendingComplaint = {
+      status: COMPLAINT_STATUSES.PENDING,
+      departmentId: "dept-hostel",
+      assignedTo: null,
+    };
+
+    // 1. Student -> hidden
+    expect(
+      evaluateCanStartReview(
+        { role: USER_ROLES.STUDENT, uid: "student_01" },
+        pendingComplaint,
+      ),
+    ).toBe(false);
+
+    // 2. Different dept officer -> hidden
+    expect(
+      evaluateCanStartReview(
+        { role: USER_ROLES.DEPARTMENT_OFFICER, departmentId: "dept-transport", uid: "officer_transport_01" },
+        pendingComplaint,
+      ),
+    ).toBe(false);
+
+    // 3. Same dept officer on IN_REVIEW complaint -> hidden (already started)
+    expect(
+      evaluateCanStartReview(
+        { role: USER_ROLES.DEPARTMENT_OFFICER, departmentId: "dept-hostel", uid: "officer_hostel_01" },
+        { ...pendingComplaint, status: COMPLAINT_STATUSES.IN_REVIEW },
+      ),
+    ).toBe(false);
+
+    // 4. Same dept officer on RESOLVED complaint -> hidden
+    expect(
+      evaluateCanStartReview(
+        { role: USER_ROLES.DEPARTMENT_OFFICER, departmentId: "dept-hostel", uid: "officer_hostel_01" },
+        { ...pendingComplaint, status: COMPLAINT_STATUSES.RESOLVED },
+      ),
+    ).toBe(false);
   });
 });

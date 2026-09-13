@@ -167,6 +167,46 @@ export async function pickupComplaintAction(
 }
 
 /**
+ * Server Action: Start review on a pending complaint (Phase 4.2.1).
+ * Transitions ticket from 'pending' to 'in_review'.
+ * Derives actor identity strictly from the verified server session.
+ */
+export async function startReviewComplaintAction(
+  complaintId: string,
+  note?: string,
+): Promise<ActionResponse<{ complaintId: string; status: string }>> {
+  try {
+    const userContext = await getAuthenticatedUser();
+    if (!userContext) {
+      return { success: false, error: "Authentication required to review complaints." };
+    }
+
+    const updated = await updateComplaintStatus(
+      {
+        complaintId,
+        nextStatus: "in_review",
+        note: note ? note.trim() : undefined,
+      },
+      userContext,
+    );
+
+    revalidatePath(`/complaints/${complaintId}`);
+    revalidatePath("/complaints");
+    revalidatePath("/officer");
+    revalidatePath("/admin");
+
+    return {
+      success: true,
+      data: { complaintId: updated.complaintId, status: updated.status },
+    };
+  } catch (error: unknown) {
+    console.error("[AU-CTS Complaint Action] startReviewComplaintAction failed:", error);
+    const message = error instanceof Error ? error.message : "Failed to start complaint review.";
+    return { success: false, error: message };
+  }
+}
+
+/**
  * Server Action: Submit feedback on a resolved complaint.
  */
 export async function submitFeedbackAction(
