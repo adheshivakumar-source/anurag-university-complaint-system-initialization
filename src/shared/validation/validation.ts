@@ -93,7 +93,7 @@ export const attachmentRefSchema = z.object({
     .min(1, "Storage path is required")
     .max(500, "Storage path is too long")
     .regex(
-      /^complaints\/[A-Za-z0-9_-]+\/attachments\/[A-Za-z0-9._-]+$/,
+      /^(?:au-cts\/)?complaints\/[A-Za-z0-9_-]+\/attachments\/[A-Za-z0-9._-]+$/,
       "Invalid storage path structure",
     ),
   fileName: z

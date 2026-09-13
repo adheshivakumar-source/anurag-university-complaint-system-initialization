@@ -13,7 +13,7 @@
 "use server";
 
 import { getAuthenticatedUser } from "@/server/auth/authorization";
-import { getAdminStorage } from "@/server/firebase/admin";
+import { uploadToCloudinary } from "@/server/storage/cloudinary";
 import {
   createComplaint,
   updateComplaintStatus,
@@ -89,37 +89,25 @@ export async function uploadComplaintAttachmentAction(
       };
     }
 
-    // Sanitize file name for safe storage path
-    const sanitizedFileName = fileName
-      .replace(/[^a-zA-Z0-9._-]/g, "_")
-      .slice(0, 100);
-
-    // Create unique folder segment adhering to storage path regex
+    // Create unique folder segment
     const folderId = `CTS-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${Math.random()
       .toString(36)
       .substring(2, 6)
       .toUpperCase()}`;
-    const storagePath = `complaints/${folderId}/attachments/${sanitizedFileName}`;
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    const storage = getAdminStorage();
-    const bucket = storage.bucket();
-    const fileRef = bucket.file(storagePath);
-
-    await fileRef.save(buffer, {
-      metadata: {
-        contentType: mimeType,
-        metadata: {
-          uploadedBy: userContext.profile.uid,
-          originalName: fileName,
-        },
-      },
-    });
+    const uploadResult = await uploadToCloudinary(
+      buffer,
+      fileName,
+      mimeType,
+      folderId,
+      userContext.profile.uid,
+    );
 
     const attachment: AttachmentRefDTO = {
-      storagePath,
+      storagePath: uploadResult.publicId,
       fileName,
-      fileSize,
+      fileSize: uploadResult.bytes || fileSize,
       mimeType,
       uploadedAt: new Date().toISOString(),
     };

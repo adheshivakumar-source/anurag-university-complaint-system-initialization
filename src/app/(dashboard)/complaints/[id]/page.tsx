@@ -223,9 +223,22 @@ export default async function ComplaintDetailPage({
                           ({Math.round(att.fileSize / 1024)} KB)
                         </span>
                       </div>
-                      <span className="text-[11px] text-[#64748B]">
-                        {att.mimeType}
-                      </span>
+                      <div className="flex items-center gap-3">
+                        <span className="text-[11px] text-[#64748B]">
+                          {att.mimeType}
+                        </span>
+                        <a
+                          href={`/api/attachments?complaintId=${complaint.complaintId}&file=${encodeURIComponent(att.storagePath)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 font-semibold text-[#6B1724] hover:underline"
+                        >
+                          <span>View</span>
+                          <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                          </svg>
+                        </a>
+                      </div>
                     </li>
                   ))}
                 </ul>

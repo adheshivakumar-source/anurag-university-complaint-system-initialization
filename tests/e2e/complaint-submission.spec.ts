@@ -228,6 +228,26 @@ test.describe("Proof & Attachment Validation Invariants", () => {
     expect(result.success).toBe(true);
   });
 
+  test("createComplaintSchema accepts grievance with Cloudinary public_id provider reference", () => {
+    const validWithCloudinary = {
+      title: "Broken Bench in Library 2nd Floor",
+      description: "Wooden bench has a cracked leg and poses a safety risk to students in study area.",
+      category: COMPLAINT_CATEGORIES.MAINTENANCE,
+      priority: COMPLAINT_PRIORITIES.HIGH,
+      location: "Library Block 2nd Floor",
+      attachments: [
+        {
+          storagePath: "au-cts/complaints/CTS-20260913-F349/attachments/lab_light",
+          fileName: "lab_light.jpg",
+          fileSize: 350 * 1024,
+          mimeType: "image/jpeg",
+        },
+      ],
+    };
+    const result = createComplaintSchema.safeParse(validWithCloudinary);
+    expect(result.success).toBe(true);
+  });
+
   test("createComplaintSchema accepts grievance without attachments (optional proof)", () => {
     const validWithoutProof = {
       title: "Library Study Room AC Inoperative",
@@ -238,5 +258,29 @@ test.describe("Proof & Attachment Validation Invariants", () => {
     };
     const result = createComplaintSchema.safeParse(validWithoutProof);
     expect(result.success).toBe(true);
+  });
+});
+
+test.describe("Authenticated Attachment Route (/api/attachments) — Security Boundaries", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.context().clearCookies();
+  });
+
+  test("unauthenticated GET to /api/attachments is rejected with 401 Unauthorized", async ({
+    request,
+  }) => {
+    const response = await request.get(`${BASE_URL}/api/attachments?complaintId=CTS-20260913-9999`);
+    expect(response.status()).toBe(401);
+    const json = await response.json();
+    expect(json.error).toMatch(/authentication required/i);
+  });
+
+  test("missing complaintId returns 400 Bad Request", async ({
+    request,
+  }) => {
+    const response = await request.get(`${BASE_URL}/api/attachments`);
+    expect(response.status()).toBe(400);
+    const json = await response.json();
+    expect(json.error).toMatch(/missing required parameter/i);
   });
 });
