@@ -121,6 +121,52 @@ export async function assignComplaintAction(
 }
 
 /**
+ * Server Action: Pick up / self-assign an unassigned complaint.
+ * Derives officer identity exclusively from server session context.
+ * Enforces atomic pickup semantics (fails if already assigned).
+ */
+export async function pickupComplaintAction(
+  complaintId: string,
+): Promise<ActionResponse<{ complaintId: string; assignedTo: string }>> {
+  try {
+    const userContext = await getAuthenticatedUser();
+    if (!userContext) {
+      return { success: false, error: "Authentication required to pick up complaints." };
+    }
+
+    if (
+      userContext.profile.role !== USER_ROLES.DEPARTMENT_OFFICER &&
+      userContext.profile.role !== USER_ROLES.ADMIN
+    ) {
+      return { success: false, error: "Only department officers and administrators can pick up grievances." };
+    }
+
+    const updated = await assignComplaint(
+      {
+        complaintId,
+        officerUid: userContext.profile.uid,
+        officerName: userContext.profile.displayName,
+        note: `Self-assigned by ${userContext.profile.displayName}`,
+      },
+      userContext,
+      { requireUnassigned: true },
+    );
+
+    revalidatePath("/officer");
+    revalidatePath(`/complaints/${complaintId}`);
+
+    return {
+      success: true,
+      data: { complaintId: updated.complaintId, assignedTo: updated.assignedTo! },
+    };
+  } catch (error: unknown) {
+    console.error("[AU-CTS Complaint Action] pickupComplaintAction failed:", error);
+    const message = error instanceof Error ? error.message : "Failed to pick up complaint.";
+    return { success: false, error: message };
+  }
+}
+
+/**
  * Server Action: Submit feedback on a resolved complaint.
  */
 export async function submitFeedbackAction(

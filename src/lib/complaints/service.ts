@@ -92,6 +92,13 @@ export class ComplaintNotFoundError extends Error {
   }
 }
 
+export class ComplaintAlreadyAssignedError extends Error {
+  constructor(message = "This complaint has already been assigned to another officer.") {
+    super(message);
+    this.name = "ComplaintAlreadyAssignedError";
+  }
+}
+
 // ── Timestamp & Document Mapping Helpers ──────────────────────
 
 function toDate(val: unknown): Date {
@@ -657,6 +664,7 @@ export async function updateComplaintStatus(
 export async function assignComplaint(
   params: AssignComplaintInput,
   userContext: AuthenticatedUserContext,
+  options?: { requireUnassigned?: boolean },
 ): Promise<Complaint> {
   const parseResult = assignComplaintSchema.safeParse(params);
   if (!parseResult.success) {
@@ -687,6 +695,13 @@ export async function assignComplaint(
     // Officers may only assign within their authorized department
     if (isOfficer && user.departmentId !== currentComplaint.departmentId) {
       throw new UnauthorizedComplaintAccessError("Officers cannot assign tickets outside their assigned department.");
+    }
+
+    // Pickup Concurrency Protection: If requireUnassigned is requested, verify ticket is unassigned
+    if (options?.requireUnassigned && currentComplaint.assignedTo !== null) {
+      throw new ComplaintAlreadyAssignedError(
+        `Complaint ${valid.complaintId} has already been assigned to ${currentComplaint.assignedToName || "another officer"}.`,
+      );
     }
 
     const updates: Record<string, unknown> = {
