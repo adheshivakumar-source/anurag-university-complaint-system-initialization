@@ -161,6 +161,20 @@ export type UpdateComplaintStatusInput = z.infer<
 >;
 
 /**
+ * Validation schema for resolving a complaint (Phase 4.2.2).
+ */
+export const resolveComplaintSchema = z.object({
+  complaintId: z.string().min(1, "Complaint ID is required"),
+  resolution: z
+    .string()
+    .trim()
+    .min(10, "Resolution must be at least 10 characters")
+    .max(2000, "Resolution details must not exceed 2000 characters"),
+});
+
+export type ResolveComplaintInput = z.infer<typeof resolveComplaintSchema>;
+
+/**
  * Validation schema for complaint assignment.
  */
 export const assignComplaintSchema = z.object({

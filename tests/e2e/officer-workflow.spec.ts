@@ -523,3 +523,96 @@ test.describe("Phase 4.2.1: Start Review UI Visibility & Server Invariants", () 
     ).toBe(false);
   });
 });
+
+test.describe("Phase 4.2.2: Resolve Complaint UI Visibility & Server Invariants", () => {
+  const evaluateCanResolve = (
+    user: { role: string; departmentId?: string | null; uid: string },
+    complaint: { status: string; departmentId: string; assignedTo: string | null },
+  ) => {
+    const isAdmin = user.role === USER_ROLES.ADMIN;
+    const isDeptOfficer =
+      user.role === USER_ROLES.DEPARTMENT_OFFICER &&
+      (user.departmentId === complaint.departmentId || user.uid === complaint.assignedTo);
+    return complaint.status === COMPLAINT_STATUSES.IN_REVIEW && (isAdmin || isDeptOfficer);
+  };
+
+  test("UI visibility logic allows Resolve Complaint for Admin and matching Department Officer on in_review complaints", () => {
+    const inReviewComplaint = {
+      status: COMPLAINT_STATUSES.IN_REVIEW,
+      departmentId: "dept-hostel",
+      assignedTo: "officer_hostel_01",
+    };
+
+    // 1. Admin -> visible
+    expect(
+      evaluateCanResolve(
+        { role: USER_ROLES.ADMIN, uid: "admin_01" },
+        inReviewComplaint,
+      ),
+    ).toBe(true);
+
+    // 2. Same-dept officer -> visible
+    expect(
+      evaluateCanResolve(
+        { role: USER_ROLES.DEPARTMENT_OFFICER, departmentId: "dept-hostel", uid: "officer_hostel_02" },
+        inReviewComplaint,
+      ),
+    ).toBe(true);
+
+    // 3. Assigned officer (even if departmentId null/different) -> visible
+    expect(
+      evaluateCanResolve(
+        { role: USER_ROLES.DEPARTMENT_OFFICER, departmentId: null, uid: "officer_hostel_01" },
+        inReviewComplaint,
+      ),
+    ).toBe(true);
+  });
+
+  test("UI visibility logic hides Resolve Complaint for unauthorized viewers or non-in-review statuses", () => {
+    const inReviewComplaint = {
+      status: COMPLAINT_STATUSES.IN_REVIEW,
+      departmentId: "dept-hostel",
+      assignedTo: null,
+    };
+
+    // 1. Student -> hidden
+    expect(
+      evaluateCanResolve(
+        { role: USER_ROLES.STUDENT, uid: "student_01" },
+        inReviewComplaint,
+      ),
+    ).toBe(false);
+
+    // 2. Different dept officer -> hidden
+    expect(
+      evaluateCanResolve(
+        { role: USER_ROLES.DEPARTMENT_OFFICER, departmentId: "dept-transport", uid: "officer_transport_01" },
+        inReviewComplaint,
+      ),
+    ).toBe(false);
+
+    // 3. Same dept officer on PENDING complaint -> hidden (must start review first)
+    expect(
+      evaluateCanResolve(
+        { role: USER_ROLES.DEPARTMENT_OFFICER, departmentId: "dept-hostel", uid: "officer_hostel_01" },
+        { ...inReviewComplaint, status: COMPLAINT_STATUSES.PENDING },
+      ),
+    ).toBe(false);
+
+    // 4. Same dept officer on RESOLVED complaint -> hidden (already resolved)
+    expect(
+      evaluateCanResolve(
+        { role: USER_ROLES.DEPARTMENT_OFFICER, departmentId: "dept-hostel", uid: "officer_hostel_01" },
+        { ...inReviewComplaint, status: COMPLAINT_STATUSES.RESOLVED },
+      ),
+    ).toBe(false);
+
+    // 5. Same dept officer on CLOSED complaint -> hidden
+    expect(
+      evaluateCanResolve(
+        { role: USER_ROLES.DEPARTMENT_OFFICER, departmentId: "dept-hostel", uid: "officer_hostel_01" },
+        { ...inReviewComplaint, status: COMPLAINT_STATUSES.CLOSED },
+      ),
+    ).toBe(false);
+  });
+});

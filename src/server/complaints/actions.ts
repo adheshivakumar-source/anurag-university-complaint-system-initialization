@@ -20,12 +20,13 @@ import {
   submitComplaintFeedback,
   getComplaintById,
 } from "./service";
-import type {
-  CreateComplaintInput,
-  CreateComplaintFormData,
-  UpdateComplaintStatusInput,
-  AssignComplaintInput,
-  SubmitFeedbackInput,
+import {
+  resolveComplaintSchema,
+  type CreateComplaintInput,
+  type CreateComplaintFormData,
+  type UpdateComplaintStatusInput,
+  type AssignComplaintInput,
+  type SubmitFeedbackInput,
 } from "@/shared/validation/validation";
 import { USER_ROLES } from "@/shared/types";
 import { revalidatePath } from "next/cache";
@@ -202,6 +203,59 @@ export async function startReviewComplaintAction(
   } catch (error: unknown) {
     console.error("[AU-CTS Complaint Action] startReviewComplaintAction failed:", error);
     const message = error instanceof Error ? error.message : "Failed to start complaint review.";
+    return { success: false, error: message };
+  }
+}
+
+/**
+ * Server Action: Resolve an in-review complaint (Phase 4.2.2).
+ * Transitions ticket from 'in_review' (or 'escalated') to 'resolved'.
+ * Derives actor identity strictly from the verified server session.
+ */
+export async function resolveComplaintAction(
+  complaintId: string,
+  resolution: string,
+): Promise<ActionResponse<{ complaintId: string; status: string }>> {
+  try {
+    const userContext = await getAuthenticatedUser();
+    if (!userContext) {
+      return { success: false, error: "Authentication required to resolve complaints." };
+    }
+
+    const parseResult = resolveComplaintSchema.safeParse({
+      complaintId,
+      resolution,
+    });
+    if (!parseResult.success) {
+      return {
+        success: false,
+        error:
+          parseResult.error.issues[0]?.message || "Invalid resolution input.",
+      };
+    }
+
+    const updated = await updateComplaintStatus(
+      {
+        complaintId: parseResult.data.complaintId,
+        nextStatus: "resolved",
+        resolution: parseResult.data.resolution,
+      },
+      userContext,
+    );
+
+    revalidatePath(`/complaints/${complaintId}`);
+    revalidatePath("/complaints");
+    revalidatePath("/officer");
+    revalidatePath("/admin");
+
+    return {
+      success: true,
+      data: { complaintId: updated.complaintId, status: updated.status },
+    };
+  } catch (error: unknown) {
+    console.error("[AU-CTS Complaint Action] resolveComplaintAction failed:", error);
+    const message =
+      error instanceof Error ? error.message : "Failed to resolve complaint.";
     return { success: false, error: message };
   }
 }

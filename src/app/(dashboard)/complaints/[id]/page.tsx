@@ -27,6 +27,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { ComplaintTimeline } from "./ComplaintTimeline";
 import { ComplaintFeedbackSection } from "./ComplaintFeedbackSection";
 import { StartReviewButton } from "./StartReviewButton";
+import { ResolveComplaintButton } from "./ResolveComplaintButton";
 
 
 interface ComplaintDetailPageProps {
@@ -90,6 +91,8 @@ export default async function ComplaintDetailPage({
       context.user.uid === complaint.assignedTo);
   const canStartReview =
     complaint.status === COMPLAINT_STATUSES.PENDING && (isAdmin || isDeptOfficer);
+  const canResolve =
+    complaint.status === COMPLAINT_STATUSES.IN_REVIEW && (isAdmin || isDeptOfficer);
 
   return (
     <div className="flex flex-col gap-6 max-w-6xl mx-auto">
@@ -122,6 +125,9 @@ export default async function ComplaintDetailPage({
           <StatusBadge status={complaint.status} />
           {canStartReview && (
             <StartReviewButton complaintId={complaint.complaintId} />
+          )}
+          {canResolve && (
+            <ResolveComplaintButton complaintId={complaint.complaintId} />
           )}
         </div>
       </div>
