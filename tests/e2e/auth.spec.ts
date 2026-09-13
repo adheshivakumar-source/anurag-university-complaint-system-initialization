@@ -352,4 +352,35 @@ test.describe("AU-CTS Auth Toast Notifications in UI", () => {
     await expect(toast).toContainText(/University email required/i);
     await expect(toast).toContainText(/@anurag\.edu\.in/i);
   });
+
+  test("login form displays 'Account not registered' toast and registration action for unregistered anurag email", async ({
+    page,
+  }) => {
+    await page.goto(`${BASE_URL}/login`);
+    await page
+      .getByLabel(/institutional email/i)
+      .fill("nonexistent_student_99999@anurag.edu.in");
+    await page.getByLabel(/password/i).fill("SomePassword123");
+    await page.getByRole("button", { name: /sign in/i }).click();
+
+    // Check toast popup renders with "Account not registered" and action
+    const toast = page.locator("[data-testid='toast-item']");
+    await expect(toast).toBeVisible({ timeout: 10000 });
+    await expect(toast).toContainText(/Account not registered/i);
+    await expect(toast).toContainText(/We couldn't find an AU-CTS account/i);
+
+    const toastAction = page.locator("[data-testid='toast-action-btn']");
+    await expect(toastAction).toBeVisible();
+    await expect(toastAction).toContainText(/Go to Registration/i);
+
+    // Also verify inline error banner and link
+    const inlineAlert = page.locator("form [role='alert']");
+    await expect(inlineAlert).toBeVisible();
+    await expect(inlineAlert).toContainText(
+      /We couldn't find an AU-CTS account with this Anurag University email/i,
+    );
+    await expect(
+      inlineAlert.getByRole("link", { name: /Go to Registration/i }),
+    ).toBeVisible();
+  });
 });

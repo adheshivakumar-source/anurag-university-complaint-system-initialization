@@ -9,9 +9,13 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { getClientAuth } from "@/client/firebase/client";
-import { signInAction } from "@/server/auth/actions";
+import {
+  signInAction,
+  checkInstitutionalAccountExistsAction,
+} from "@/server/auth/actions";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { anuragEmailSchema } from "@/shared/validation/validation";
@@ -35,7 +39,9 @@ interface LoginFormProps {
 
 export function LoginForm({ redirectTo, initialError }: LoginFormProps) {
   const [serverError, setServerError] = useState<string | null>(initialError || null);
+  const [isUnregistered, setIsUnregistered] = useState<boolean>(false);
   const toast = useToast();
+  const router = useRouter();
 
   const {
     register,
@@ -47,6 +53,7 @@ export function LoginForm({ redirectTo, initialError }: LoginFormProps) {
 
   const onSubmit = async (data: LoginFormData) => {
     setServerError(null);
+    setIsUnregistered(false);
 
     try {
       // Step 1: Sign in with Firebase client SDK
@@ -75,6 +82,7 @@ export function LoginForm({ redirectTo, initialError }: LoginFormProps) {
     } catch (error: unknown) {
       const firebaseError = error as { code?: string; message?: string };
       const code = firebaseError.code ?? "";
+
       // Dev-only diagnostic: logs error code or error message — never logs passwords or tokens
       if (process.env.NODE_ENV === "development") {
         console.error(
@@ -82,6 +90,27 @@ export function LoginForm({ redirectTo, initialError }: LoginFormProps) {
           code || (error instanceof Error ? error.message : "unknown_error"),
         );
       }
+
+      // Distinguish unregistered institutional email vs wrong password
+      if (code === "auth/invalid-credential" || code === "auth/user-not-found") {
+        const check = await checkInstitutionalAccountExistsAction(data.email);
+        if (!check.exists) {
+          const unregisteredTitle = "Account not registered";
+          const unregisteredMsg =
+            "We couldn't find an AU-CTS account with this Anurag University email. Please register first.";
+          setServerError(unregisteredMsg);
+          setIsUnregistered(true);
+          toast.error(unregisteredMsg, {
+            title: unregisteredTitle,
+            action: {
+              label: "Go to Registration",
+              onClick: () => router.push("/register"),
+            },
+          });
+          return;
+        }
+      }
+
       const mapped = mapAuthError(code || (error instanceof Error ? error.message : ""));
       setServerError(mapped.message);
       toast.error(mapped.message, { title: mapped.title });
@@ -106,9 +135,19 @@ export function LoginForm({ redirectTo, initialError }: LoginFormProps) {
       {serverError && (
         <div
           role="alert"
-          className="rounded border border-[#FECACA] bg-[#FEF2F2] px-4 py-3 text-sm text-[#991B1B]"
+          className="rounded border border-[#FECACA] bg-[#FEF2F2] px-4 py-3 text-sm text-[#991B1B] flex flex-col gap-2"
         >
-          {serverError}
+          <p>{serverError}</p>
+          {isUnregistered && (
+            <div>
+              <Link
+                href="/register"
+                className="inline-flex items-center text-xs font-semibold text-[#6B1724] hover:underline underline-offset-2"
+              >
+                Go to Registration &rarr;
+              </Link>
+            </div>
+          )}
         </div>
       )}
 

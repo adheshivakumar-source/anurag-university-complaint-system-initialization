@@ -133,3 +133,39 @@ export async function signOutAction(): Promise<void> {
   await destroySession();
   redirect("/login");
 }
+
+/**
+ * Checks whether an institutional account exists in Firebase Auth.
+ * Strictly requires the email to belong to @anurag.edu.in to prevent
+ * arbitrary public email enumeration.
+ */
+export async function checkInstitutionalAccountExistsAction(
+  email: string,
+): Promise<{ exists: boolean; error?: string }> {
+  try {
+    const cleanEmail = email.trim().toLowerCase();
+
+    // Enforce domain restriction before performing any lookup
+    if (!isAnuragEmail(cleanEmail)) {
+      return {
+        exists: false,
+        error: "Only Anurag University (@anurag.edu.in) emails are permitted.",
+      };
+    }
+
+    const adminAuth = getAdminAuth();
+    try {
+      await adminAuth.getUserByEmail(cleanEmail);
+      return { exists: true };
+    } catch (err: unknown) {
+      const fbErr = err as { code?: string };
+      if (fbErr.code === "auth/user-not-found") {
+        return { exists: false };
+      }
+      return { exists: false };
+    }
+  } catch (error) {
+    console.error("[AU-CTS] Error checking account existence:", error);
+    return { exists: false };
+  }
+}

@@ -23,9 +23,15 @@ import { cn } from "@/utils/utils";
 
 export type ToastType = "success" | "error" | "warning" | "info";
 
+export interface ToastAction {
+  label: string;
+  onClick: () => void;
+}
+
 export interface ToastOptions {
   title?: string;
   duration?: number; // in ms, default 5000
+  action?: ToastAction;
 }
 
 export interface ToastItem {
@@ -34,6 +40,7 @@ export interface ToastItem {
   title?: string;
   message: string;
   duration: number;
+  action?: ToastAction;
 }
 
 interface ToastContextValue {
@@ -72,7 +79,17 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         }
 
         const id = `toast-${Date.now()}-${++toastCounter}`;
-        return [...prev, { id, type, title, message, duration }];
+        return [
+          ...prev,
+          {
+            id,
+            type,
+            title,
+            message,
+            duration,
+            action: options?.action,
+          },
+        ];
       });
     },
     [],
@@ -204,6 +221,19 @@ function ToastMessage({
           </h4>
         )}
         <p className="text-[#475569] leading-snug">{toast.message}</p>
+        {toast.action && (
+          <button
+            type="button"
+            data-testid="toast-action-btn"
+            onClick={() => {
+              toast.action?.onClick();
+              onDismiss(toast.id);
+            }}
+            className="mt-2 inline-flex items-center text-xs font-semibold text-[#6B1724] hover:underline underline-offset-2 cursor-pointer"
+          >
+            {toast.action.label} &rarr;
+          </button>
+        )}
       </div>
       <button
         type="button"
