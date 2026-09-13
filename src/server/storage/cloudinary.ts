@@ -15,9 +15,16 @@ import { v2 as cloudinary, type UploadApiResponse } from "cloudinary";
  * Configure Cloudinary singleton with server environment variables.
  */
 function getCloudinaryConfig() {
-  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
-  const apiKey = process.env.CLOUDINARY_API_KEY;
-  const apiSecret = process.env.CLOUDINARY_API_SECRET;
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME?.trim();
+  const apiKey = process.env.CLOUDINARY_API_KEY?.trim();
+  const apiSecret = process.env.CLOUDINARY_API_SECRET?.trim();
+
+  if (!cloudName || !apiKey || !apiSecret) {
+    throw new Error(
+      "[AU-CTS] Cloudinary configuration is incomplete. " +
+        "Ensure CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET are set in environment variables.",
+    );
+  }
 
   cloudinary.config({
     cloud_name: cloudName,
