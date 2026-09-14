@@ -867,3 +867,90 @@ export async function submitComplaintFeedback(
     });
   });
 }
+
+// ── Admin Dashboard Metrics & Queries ──────────────────────────
+
+export interface AdminOverviewMetrics {
+  totalComplaints: number;
+  submittedCount: number;
+  activeRemediationCount: number;
+  escalatedCount: number;
+  resolvedCount: number;
+  closedCount: number;
+  unassignedCount: number;
+}
+
+/**
+ * Computes live institutional grievance metrics using native Firestore aggregations.
+ * Restricted strictly to administrator sessions.
+ */
+export async function getAdminOverviewMetrics(
+  userContext: AuthenticatedUserContext,
+): Promise<AdminOverviewMetrics> {
+  if (userContext.user.role !== USER_ROLES.ADMIN) {
+    throw new UnauthorizedComplaintAccessError("Only administrators can view institutional grievance metrics.");
+  }
+
+  const db = getAdminFirestore();
+  const complaintsCol = db.collection(COMPLAINTS_COLLECTION);
+
+  const [
+    totalSnap,
+    submittedSnap,
+    activeSnap,
+    escalatedSnap,
+    resolvedSnap,
+    closedSnap,
+    unassignedSnap,
+  ] = await Promise.all([
+    complaintsCol.count().get(),
+    complaintsCol.where("status", "==", COMPLAINT_STATUSES.SUBMITTED).count().get(),
+    complaintsCol
+      .where("status", "in", [
+        COMPLAINT_STATUSES.PENDING,
+        COMPLAINT_STATUSES.IN_REVIEW,
+        COMPLAINT_STATUSES.REOPENED,
+      ])
+      .count()
+      .get(),
+    complaintsCol.where("status", "==", COMPLAINT_STATUSES.ESCALATED).count().get(),
+    complaintsCol.where("status", "==", COMPLAINT_STATUSES.RESOLVED).count().get(),
+    complaintsCol.where("status", "==", COMPLAINT_STATUSES.CLOSED).count().get(),
+    complaintsCol.where("assignedTo", "==", null).count().get(),
+  ]);
+
+  return {
+    totalComplaints: totalSnap.data().count,
+    submittedCount: submittedSnap.data().count,
+    activeRemediationCount: activeSnap.data().count,
+    escalatedCount: escalatedSnap.data().count,
+    resolvedCount: resolvedSnap.data().count,
+    closedCount: closedSnap.data().count,
+    unassignedCount: unassignedSnap.data().count,
+  };
+}
+
+/**
+ * Retrieves the N most recent institutional complaints across all departments for administrative oversight.
+ * Restricted strictly to administrator sessions.
+ */
+export async function listRecentAdminComplaints(
+  userContext: AuthenticatedUserContext,
+  limitCount = 5,
+): Promise<ComplaintDTO[]> {
+  if (userContext.user.role !== USER_ROLES.ADMIN) {
+    throw new UnauthorizedComplaintAccessError("Only administrators can view institutional grievance streams.");
+  }
+
+  const db = getAdminFirestore();
+  const snapshot = await db
+    .collection(COMPLAINTS_COLLECTION)
+    .orderBy("createdAt", "desc")
+    .limit(limitCount)
+    .get();
+
+  return snapshot.docs.map((doc) => {
+    const complaint = mapDocToComplaint(doc.id, doc.data());
+    return serializeComplaintToDTO(complaint);
+  });
+}

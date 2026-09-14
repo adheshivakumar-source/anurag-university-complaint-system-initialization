@@ -368,3 +368,47 @@ export async function listAllUsers(filter?: {
 
   return users;
 }
+
+// ── Admin User Governance Metrics ─────────────────────────────
+
+export interface AdminUserMetrics {
+  totalUsers: number;
+  studentsCount: number;
+  facultyCount: number;
+  staffCount: number;
+  officersCount: number;
+  deactivatedCount: number;
+}
+
+/**
+ * Computes high-level user governance metrics using native Firestore aggregations.
+ */
+export async function getAdminUserMetrics(): Promise<AdminUserMetrics> {
+  const db = getAdminFirestore();
+  const usersCol = db.collection(USERS_COLLECTION);
+
+  const [
+    totalSnap,
+    studentsSnap,
+    facultySnap,
+    staffSnap,
+    officersSnap,
+    deactivatedSnap,
+  ] = await Promise.all([
+    usersCol.count().get(),
+    usersCol.where("role", "==", USER_ROLES.STUDENT).count().get(),
+    usersCol.where("role", "==", USER_ROLES.FACULTY).count().get(),
+    usersCol.where("role", "==", USER_ROLES.STAFF).count().get(),
+    usersCol.where("role", "==", USER_ROLES.DEPARTMENT_OFFICER).count().get(),
+    usersCol.where("isActive", "==", false).count().get(),
+  ]);
+
+  return {
+    totalUsers: totalSnap.data().count,
+    studentsCount: studentsSnap.data().count,
+    facultyCount: facultySnap.data().count,
+    staffCount: staffSnap.data().count,
+    officersCount: officersSnap.data().count,
+    deactivatedCount: deactivatedSnap.data().count,
+  };
+}
