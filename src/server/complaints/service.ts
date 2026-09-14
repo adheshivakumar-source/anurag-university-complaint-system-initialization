@@ -391,6 +391,58 @@ export async function listUserComplaints(
   return snapshot.docs.map((doc) => mapDocToComplaint(doc.id, doc.data()));
 }
 
+export interface SubmitterMetricsDTO {
+  totalFiled: number;
+  activeCount: number;
+  inReviewCount: number;
+  resolvedCount: number;
+}
+
+/**
+ * Retrieves aggregate lifetime complaint metrics for a specific submitter.
+ * Uses native Firestore server-side count aggregations for scalability and Spark quota efficiency.
+ */
+export async function getUserComplaintMetrics(
+  userId: string,
+): Promise<SubmitterMetricsDTO> {
+  const db = getAdminFirestore();
+  const baseQuery = db
+    .collection(COMPLAINTS_COLLECTION)
+    .where("submittedBy", "==", userId);
+
+  const [totalSnap, activeSnap, inReviewSnap, resolvedSnap] = await Promise.all([
+    baseQuery.count().get(),
+    baseQuery
+      .where("status", "in", [
+        COMPLAINT_STATUSES.SUBMITTED,
+        COMPLAINT_STATUSES.PENDING,
+        COMPLAINT_STATUSES.IN_REVIEW,
+        COMPLAINT_STATUSES.REOPENED,
+        COMPLAINT_STATUSES.ESCALATED,
+      ])
+      .count()
+      .get(),
+    baseQuery
+      .where("status", "==", COMPLAINT_STATUSES.IN_REVIEW)
+      .count()
+      .get(),
+    baseQuery
+      .where("status", "in", [
+        COMPLAINT_STATUSES.RESOLVED,
+        COMPLAINT_STATUSES.CLOSED,
+      ])
+      .count()
+      .get(),
+  ]);
+
+  return {
+    totalFiled: totalSnap.data().count,
+    activeCount: activeSnap.data().count,
+    inReviewCount: inReviewSnap.data().count,
+    resolvedCount: resolvedSnap.data().count,
+  };
+}
+
 /**
  * Lists complaints assigned to or routed to a specific department.
  */
