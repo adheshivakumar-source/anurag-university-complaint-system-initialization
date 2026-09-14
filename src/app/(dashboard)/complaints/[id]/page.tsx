@@ -28,6 +28,8 @@ import { ComplaintTimeline } from "./ComplaintTimeline";
 import { ComplaintFeedbackSection } from "./ComplaintFeedbackSection";
 import { StartReviewButton } from "./StartReviewButton";
 import { ResolveComplaintButton } from "./ResolveComplaintButton";
+import { CloseComplaintButton } from "./CloseComplaintButton";
+import { ReopenComplaintButton } from "./ReopenComplaintButton";
 
 
 interface ComplaintDetailPageProps {
@@ -93,6 +95,8 @@ export default async function ComplaintDetailPage({
     complaint.status === COMPLAINT_STATUSES.PENDING && (isAdmin || isDeptOfficer);
   const canResolve =
     complaint.status === COMPLAINT_STATUSES.IN_REVIEW && (isAdmin || isDeptOfficer);
+  const canCloseOrReopen =
+    complaint.status === COMPLAINT_STATUSES.RESOLVED && (isSubmitter || isAdmin);
 
   return (
     <div className="flex flex-col gap-6 max-w-6xl mx-auto">
@@ -128,6 +132,12 @@ export default async function ComplaintDetailPage({
           )}
           {canResolve && (
             <ResolveComplaintButton complaintId={complaint.complaintId} />
+          )}
+          {canCloseOrReopen && (
+            <>
+              <ReopenComplaintButton complaintId={complaint.complaintId} />
+              <CloseComplaintButton complaintId={complaint.complaintId} />
+            </>
           )}
         </div>
       </div>

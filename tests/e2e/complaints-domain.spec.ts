@@ -10,6 +10,8 @@ import {
   createComplaintSchema,
   updateComplaintStatusSchema,
   resolveComplaintSchema,
+  closeComplaintSchema,
+  reopenComplaintSchema,
   attachmentRefSchema,
 } from "@/shared/validation/validation";
 import {
@@ -169,6 +171,80 @@ test.describe("Complaint Domain Validation (Zod Schemas)", () => {
     if (!invalid.success) {
       expect(invalid.error.issues[0]?.message).toMatch(/not exceed 2000 characters/i);
     }
+  });
+
+  test("accepts valid close complaint payload with optional note", () => {
+    const validWithNote = closeComplaintSchema.safeParse({
+      complaintId: "CTS-20260913-ABCD",
+      note: "Satisfied with the fix.",
+    });
+    expect(validWithNote.success).toBe(true);
+
+    const validWithoutNote = closeComplaintSchema.safeParse({
+      complaintId: "CTS-20260913-ABCD",
+    });
+    expect(validWithoutNote.success).toBe(true);
+  });
+
+  test("rejects close complaint with missing complaintId", () => {
+    const invalid = closeComplaintSchema.safeParse({
+      complaintId: "",
+    });
+    expect(invalid.success).toBe(false);
+  });
+
+  test("rejects close complaint note exceeding 500 characters", () => {
+    const invalid = closeComplaintSchema.safeParse({
+      complaintId: "CTS-20260913-ABCD",
+      note: "x".repeat(501),
+    });
+    expect(invalid.success).toBe(false);
+  });
+
+  test("accepts valid reopen complaint payload with 10-1000 char reason", () => {
+    const valid = reopenComplaintSchema.safeParse({
+      complaintId: "CTS-20260913-ABCD",
+      reason: "The projector bulb is flickering again after 10 minutes of use.",
+    });
+    expect(valid.success).toBe(true);
+  });
+
+  test("rejects reopen complaint with reason shorter than 10 characters", () => {
+    const invalid = reopenComplaintSchema.safeParse({
+      complaintId: "CTS-20260913-ABCD",
+      reason: "Not fixed",
+    });
+    expect(invalid.success).toBe(false);
+    if (!invalid.success) {
+      expect(invalid.error.issues[0]?.message).toMatch(/at least 10 characters/i);
+    }
+  });
+
+  test("rejects reopen complaint with whitespace-only reason", () => {
+    const invalid = reopenComplaintSchema.safeParse({
+      complaintId: "CTS-20260913-ABCD",
+      reason: "          ",
+    });
+    expect(invalid.success).toBe(false);
+  });
+
+  test("rejects reopen complaint with reason exceeding 1000 characters", () => {
+    const invalid = reopenComplaintSchema.safeParse({
+      complaintId: "CTS-20260913-ABCD",
+      reason: "r".repeat(1001),
+    });
+    expect(invalid.success).toBe(false);
+    if (!invalid.success) {
+      expect(invalid.error.issues[0]?.message).toMatch(/not exceed 1000 characters/i);
+    }
+  });
+
+  test("rejects reopen complaint with missing complaintId", () => {
+    const invalid = reopenComplaintSchema.safeParse({
+      complaintId: "",
+      reason: "The issue persists and requires further investigation.",
+    });
+    expect(invalid.success).toBe(false);
   });
 });
 
@@ -570,6 +646,380 @@ test.describe("Phase 4.2.2: Resolve Complaint (in_review -> resolved) Full Autho
     expect(result.reason).toMatch(/terminal status/i);
   });
 });
+
+test.describe("Phase 5.2: Close Complaint (resolved -> closed) Full Authorization & State Matrix", () => {
+  const submitterStudentUid = "student_submitter_01";
+  const submitterFacultyUid = "faculty_submitter_01";
+  const submitterStaffUid = "staff_submitter_01";
+  const nonSubmitterStudentUid = "student_other_02";
+  const nonSubmitterFacultyUid = "faculty_other_02";
+  const officerSameDeptUid = "officer_hostel_01";
+  const officerAssignedUid = "officer_assigned_01";
+  const officerDiffDeptUid = "officer_transport_01";
+  const adminUid = "admin_super_01";
+
+  const resolvedComplaint = {
+    submittedBy: submitterStudentUid,
+    assignedTo: officerAssignedUid,
+    departmentId: "dept-hostel",
+  };
+
+  test("allows Student (submitter) to close resolved ticket", () => {
+    const result = validateStatusTransition(
+      COMPLAINT_STATUSES.RESOLVED,
+      COMPLAINT_STATUSES.CLOSED,
+      { uid: submitterStudentUid, role: USER_ROLES.STUDENT },
+      resolvedComplaint,
+    );
+    expect(result.allowed).toBe(true);
+  });
+
+  test("allows Faculty (submitter) to close resolved ticket", () => {
+    const result = validateStatusTransition(
+      COMPLAINT_STATUSES.RESOLVED,
+      COMPLAINT_STATUSES.CLOSED,
+      { uid: submitterFacultyUid, role: USER_ROLES.FACULTY },
+      { ...resolvedComplaint, submittedBy: submitterFacultyUid },
+    );
+    expect(result.allowed).toBe(true);
+  });
+
+  test("allows Staff (submitter) to close resolved ticket", () => {
+    const result = validateStatusTransition(
+      COMPLAINT_STATUSES.RESOLVED,
+      COMPLAINT_STATUSES.CLOSED,
+      { uid: submitterStaffUid, role: USER_ROLES.STAFF },
+      { ...resolvedComplaint, submittedBy: submitterStaffUid },
+    );
+    expect(result.allowed).toBe(true);
+  });
+
+  test("allows Admin to close resolved ticket", () => {
+    const result = validateStatusTransition(
+      COMPLAINT_STATUSES.RESOLVED,
+      COMPLAINT_STATUSES.CLOSED,
+      { uid: adminUid, role: USER_ROLES.ADMIN },
+      resolvedComplaint,
+    );
+    expect(result.allowed).toBe(true);
+  });
+
+  test("denies Department Officer of the same department from closing resolved ticket", () => {
+    const result = validateStatusTransition(
+      COMPLAINT_STATUSES.RESOLVED,
+      COMPLAINT_STATUSES.CLOSED,
+      { uid: officerSameDeptUid, role: USER_ROLES.DEPARTMENT_OFFICER, departmentId: "dept-hostel" },
+      resolvedComplaint,
+    );
+    expect(result.allowed).toBe(false);
+    expect(result.reason).toMatch(/original submitter or an administrator/i);
+  });
+
+  test("denies assigned Department Officer from closing resolved ticket", () => {
+    const result = validateStatusTransition(
+      COMPLAINT_STATUSES.RESOLVED,
+      COMPLAINT_STATUSES.CLOSED,
+      { uid: officerAssignedUid, role: USER_ROLES.DEPARTMENT_OFFICER, departmentId: "dept-hostel" },
+      resolvedComplaint,
+    );
+    expect(result.allowed).toBe(false);
+    expect(result.reason).toMatch(/original submitter or an administrator/i);
+  });
+
+  test("denies unassigned Department Officer from closing resolved ticket", () => {
+    const result = validateStatusTransition(
+      COMPLAINT_STATUSES.RESOLVED,
+      COMPLAINT_STATUSES.CLOSED,
+      { uid: officerDiffDeptUid, role: USER_ROLES.DEPARTMENT_OFFICER, departmentId: "dept-transport" },
+      resolvedComplaint,
+    );
+    expect(result.allowed).toBe(false);
+    expect(result.reason).toMatch(/original submitter or an administrator/i);
+  });
+
+  test("denies non-submitter Student from closing resolved ticket", () => {
+    const result = validateStatusTransition(
+      COMPLAINT_STATUSES.RESOLVED,
+      COMPLAINT_STATUSES.CLOSED,
+      { uid: nonSubmitterStudentUid, role: USER_ROLES.STUDENT },
+      resolvedComplaint,
+    );
+    expect(result.allowed).toBe(false);
+    expect(result.reason).toMatch(/original submitter or an administrator/i);
+  });
+
+  test("denies non-submitter Faculty from closing resolved ticket", () => {
+    const result = validateStatusTransition(
+      COMPLAINT_STATUSES.RESOLVED,
+      COMPLAINT_STATUSES.CLOSED,
+      { uid: nonSubmitterFacultyUid, role: USER_ROLES.FACULTY },
+      resolvedComplaint,
+    );
+    expect(result.allowed).toBe(false);
+    expect(result.reason).toMatch(/original submitter or an administrator/i);
+  });
+
+  test("denies closing ticket if already in status CLOSED (terminal)", () => {
+    const result = validateStatusTransition(
+      COMPLAINT_STATUSES.CLOSED,
+      COMPLAINT_STATUSES.CLOSED,
+      { uid: submitterStudentUid, role: USER_ROLES.STUDENT },
+      resolvedComplaint,
+    );
+    expect(result.allowed).toBe(false);
+    expect(result.reason).toMatch(/terminal status/i);
+  });
+
+  test("denies closing ticket from SUBMITTED", () => {
+    const result = validateStatusTransition(
+      COMPLAINT_STATUSES.SUBMITTED,
+      COMPLAINT_STATUSES.CLOSED,
+      { uid: submitterStudentUid, role: USER_ROLES.STUDENT },
+      resolvedComplaint,
+    );
+    expect(result.allowed).toBe(false);
+  });
+
+  test("denies closing ticket from PENDING", () => {
+    const result = validateStatusTransition(
+      COMPLAINT_STATUSES.PENDING,
+      COMPLAINT_STATUSES.CLOSED,
+      { uid: submitterStudentUid, role: USER_ROLES.STUDENT },
+      resolvedComplaint,
+    );
+    expect(result.allowed).toBe(false);
+  });
+
+  test("denies closing ticket from IN_REVIEW", () => {
+    const result = validateStatusTransition(
+      COMPLAINT_STATUSES.IN_REVIEW,
+      COMPLAINT_STATUSES.CLOSED,
+      { uid: submitterStudentUid, role: USER_ROLES.STUDENT },
+      resolvedComplaint,
+    );
+    expect(result.allowed).toBe(false);
+  });
+
+  test("denies closing ticket from REOPENED directly", () => {
+    const result = validateStatusTransition(
+      COMPLAINT_STATUSES.REOPENED,
+      COMPLAINT_STATUSES.CLOSED,
+      { uid: submitterStudentUid, role: USER_ROLES.STUDENT },
+      resolvedComplaint,
+    );
+    expect(result.allowed).toBe(false);
+  });
+
+  test("denies closing ticket when ticket is REJECTED", () => {
+    const result = validateStatusTransition(
+      COMPLAINT_STATUSES.REJECTED,
+      COMPLAINT_STATUSES.CLOSED,
+      { uid: adminUid, role: USER_ROLES.ADMIN },
+      resolvedComplaint,
+    );
+    expect(result.allowed).toBe(false);
+    expect(result.reason).toMatch(/terminal status/i);
+  });
+
+  test("denies closing ticket when ticket is DUPLICATE", () => {
+    const result = validateStatusTransition(
+      COMPLAINT_STATUSES.DUPLICATE,
+      COMPLAINT_STATUSES.CLOSED,
+      { uid: adminUid, role: USER_ROLES.ADMIN },
+      resolvedComplaint,
+    );
+    expect(result.allowed).toBe(false);
+    expect(result.reason).toMatch(/terminal status/i);
+  });
+});
+
+test.describe("Phase 5.2: Reopen Complaint (resolved -> reopened) Full Authorization & State Matrix", () => {
+  const submitterStudentUid = "student_submitter_01";
+  const submitterFacultyUid = "faculty_submitter_01";
+  const submitterStaffUid = "staff_submitter_01";
+  const nonSubmitterStudentUid = "student_other_02";
+  const nonSubmitterFacultyUid = "faculty_other_02";
+  const officerSameDeptUid = "officer_hostel_01";
+  const officerAssignedUid = "officer_assigned_01";
+  const officerDiffDeptUid = "officer_transport_01";
+  const adminUid = "admin_super_01";
+
+  const resolvedComplaint = {
+    submittedBy: submitterStudentUid,
+    assignedTo: officerAssignedUid,
+    departmentId: "dept-hostel",
+  };
+
+  test("allows Student (submitter) to reopen resolved ticket", () => {
+    const result = validateStatusTransition(
+      COMPLAINT_STATUSES.RESOLVED,
+      COMPLAINT_STATUSES.REOPENED,
+      { uid: submitterStudentUid, role: USER_ROLES.STUDENT },
+      resolvedComplaint,
+    );
+    expect(result.allowed).toBe(true);
+  });
+
+  test("allows Faculty (submitter) to reopen resolved ticket", () => {
+    const result = validateStatusTransition(
+      COMPLAINT_STATUSES.RESOLVED,
+      COMPLAINT_STATUSES.REOPENED,
+      { uid: submitterFacultyUid, role: USER_ROLES.FACULTY },
+      { ...resolvedComplaint, submittedBy: submitterFacultyUid },
+    );
+    expect(result.allowed).toBe(true);
+  });
+
+  test("allows Staff (submitter) to reopen resolved ticket", () => {
+    const result = validateStatusTransition(
+      COMPLAINT_STATUSES.RESOLVED,
+      COMPLAINT_STATUSES.REOPENED,
+      { uid: submitterStaffUid, role: USER_ROLES.STAFF },
+      { ...resolvedComplaint, submittedBy: submitterStaffUid },
+    );
+    expect(result.allowed).toBe(true);
+  });
+
+  test("allows Admin to reopen resolved ticket", () => {
+    const result = validateStatusTransition(
+      COMPLAINT_STATUSES.RESOLVED,
+      COMPLAINT_STATUSES.REOPENED,
+      { uid: adminUid, role: USER_ROLES.ADMIN },
+      resolvedComplaint,
+    );
+    expect(result.allowed).toBe(true);
+  });
+
+  test("denies Department Officer of the same department from reopening resolved ticket", () => {
+    const result = validateStatusTransition(
+      COMPLAINT_STATUSES.RESOLVED,
+      COMPLAINT_STATUSES.REOPENED,
+      { uid: officerSameDeptUid, role: USER_ROLES.DEPARTMENT_OFFICER, departmentId: "dept-hostel" },
+      resolvedComplaint,
+    );
+    expect(result.allowed).toBe(false);
+    expect(result.reason).toMatch(/original submitter or an administrator/i);
+  });
+
+  test("denies assigned Department Officer from reopening resolved ticket", () => {
+    const result = validateStatusTransition(
+      COMPLAINT_STATUSES.RESOLVED,
+      COMPLAINT_STATUSES.REOPENED,
+      { uid: officerAssignedUid, role: USER_ROLES.DEPARTMENT_OFFICER, departmentId: "dept-hostel" },
+      resolvedComplaint,
+    );
+    expect(result.allowed).toBe(false);
+    expect(result.reason).toMatch(/original submitter or an administrator/i);
+  });
+
+  test("denies unassigned Department Officer from reopening resolved ticket", () => {
+    const result = validateStatusTransition(
+      COMPLAINT_STATUSES.RESOLVED,
+      COMPLAINT_STATUSES.REOPENED,
+      { uid: officerDiffDeptUid, role: USER_ROLES.DEPARTMENT_OFFICER, departmentId: "dept-transport" },
+      resolvedComplaint,
+    );
+    expect(result.allowed).toBe(false);
+    expect(result.reason).toMatch(/original submitter or an administrator/i);
+  });
+
+  test("denies non-submitter Student from reopening resolved ticket", () => {
+    const result = validateStatusTransition(
+      COMPLAINT_STATUSES.RESOLVED,
+      COMPLAINT_STATUSES.REOPENED,
+      { uid: nonSubmitterStudentUid, role: USER_ROLES.STUDENT },
+      resolvedComplaint,
+    );
+    expect(result.allowed).toBe(false);
+    expect(result.reason).toMatch(/original submitter or an administrator/i);
+  });
+
+  test("denies non-submitter Faculty from reopening resolved ticket", () => {
+    const result = validateStatusTransition(
+      COMPLAINT_STATUSES.RESOLVED,
+      COMPLAINT_STATUSES.REOPENED,
+      { uid: nonSubmitterFacultyUid, role: USER_ROLES.FACULTY },
+      resolvedComplaint,
+    );
+    expect(result.allowed).toBe(false);
+    expect(result.reason).toMatch(/original submitter or an administrator/i);
+  });
+
+  test("denies reopening ticket from terminal state CLOSED", () => {
+    const result = validateStatusTransition(
+      COMPLAINT_STATUSES.CLOSED,
+      COMPLAINT_STATUSES.REOPENED,
+      { uid: submitterStudentUid, role: USER_ROLES.STUDENT },
+      resolvedComplaint,
+    );
+    expect(result.allowed).toBe(false);
+    expect(result.reason).toMatch(/terminal status/i);
+  });
+
+  test("denies reopening ticket if already in status REOPENED (no self-transition)", () => {
+    const result = validateStatusTransition(
+      COMPLAINT_STATUSES.REOPENED,
+      COMPLAINT_STATUSES.REOPENED,
+      { uid: submitterStudentUid, role: USER_ROLES.STUDENT },
+      resolvedComplaint,
+    );
+    expect(result.allowed).toBe(false);
+    expect(result.reason).toMatch(/already in status/i);
+  });
+
+  test("denies reopening ticket from SUBMITTED", () => {
+    const result = validateStatusTransition(
+      COMPLAINT_STATUSES.SUBMITTED,
+      COMPLAINT_STATUSES.REOPENED,
+      { uid: submitterStudentUid, role: USER_ROLES.STUDENT },
+      resolvedComplaint,
+    );
+    expect(result.allowed).toBe(false);
+  });
+
+  test("denies reopening ticket from PENDING", () => {
+    const result = validateStatusTransition(
+      COMPLAINT_STATUSES.PENDING,
+      COMPLAINT_STATUSES.REOPENED,
+      { uid: submitterStudentUid, role: USER_ROLES.STUDENT },
+      resolvedComplaint,
+    );
+    expect(result.allowed).toBe(false);
+  });
+
+  test("denies reopening ticket from IN_REVIEW", () => {
+    const result = validateStatusTransition(
+      COMPLAINT_STATUSES.IN_REVIEW,
+      COMPLAINT_STATUSES.REOPENED,
+      { uid: submitterStudentUid, role: USER_ROLES.STUDENT },
+      resolvedComplaint,
+    );
+    expect(result.allowed).toBe(false);
+  });
+
+  test("denies reopening ticket when ticket is REJECTED", () => {
+    const result = validateStatusTransition(
+      COMPLAINT_STATUSES.REJECTED,
+      COMPLAINT_STATUSES.REOPENED,
+      { uid: adminUid, role: USER_ROLES.ADMIN },
+      resolvedComplaint,
+    );
+    expect(result.allowed).toBe(false);
+    expect(result.reason).toMatch(/terminal status/i);
+  });
+
+  test("denies reopening ticket when ticket is DUPLICATE", () => {
+    const result = validateStatusTransition(
+      COMPLAINT_STATUSES.DUPLICATE,
+      COMPLAINT_STATUSES.REOPENED,
+      { uid: adminUid, role: USER_ROLES.ADMIN },
+      resolvedComplaint,
+    );
+    expect(result.allowed).toBe(false);
+    expect(result.reason).toMatch(/terminal status/i);
+  });
+});
+
 
 test.describe("Complaint ID Generator", () => {
   test("generates human-readable collision-resistant CTS ID format", () => {

@@ -23,6 +23,8 @@ import {
 } from "./service";
 import {
   resolveComplaintSchema,
+  closeComplaintSchema,
+  reopenComplaintSchema,
   ALLOWED_ATTACHMENT_MIME_TYPES,
   MAX_ATTACHMENT_SIZE_BYTES,
   type CreateComplaintInput,
@@ -30,6 +32,8 @@ import {
   type UpdateComplaintStatusInput,
   type AssignComplaintInput,
   type SubmitFeedbackInput,
+  type CloseComplaintInput,
+  type ReopenComplaintInput,
 } from "@/shared/validation/validation";
 import { USER_ROLES, type AttachmentRefDTO } from "@/shared/types";
 import { revalidatePath } from "next/cache";
@@ -346,6 +350,113 @@ export async function resolveComplaintAction(
     return { success: false, error: message };
   }
 }
+
+/**
+ * Server Action: Close a resolved complaint (Phase 5.2).
+ * Transitions ticket from 'resolved' to 'closed' (terminal).
+ * Enforces session authentication and submitter/admin authorization.
+ */
+export async function closeComplaintAction(
+  complaintId: string,
+  note?: string,
+): Promise<ActionResponse<{ complaintId: string; status: string }>> {
+  try {
+    const userContext = await getAuthenticatedUser();
+    if (!userContext) {
+      return { success: false, error: "Authentication required to close a complaint." };
+    }
+
+    const parseResult = closeComplaintSchema.safeParse({
+      complaintId,
+      note,
+    });
+    if (!parseResult.success) {
+      return {
+        success: false,
+        error: parseResult.error.issues[0]?.message || "Invalid close input.",
+      };
+    }
+
+    const updated = await updateComplaintStatus(
+      {
+        complaintId: parseResult.data.complaintId,
+        nextStatus: "closed",
+        note: parseResult.data.note,
+      },
+      userContext,
+    );
+
+    revalidatePath(`/complaints/${complaintId}`);
+    revalidatePath("/complaints");
+    revalidatePath("/dashboard");
+    revalidatePath("/officer");
+    revalidatePath("/admin");
+
+    return {
+      success: true,
+      data: { complaintId: updated.complaintId, status: updated.status },
+    };
+  } catch (error: unknown) {
+    console.error("[AU-CTS Complaint Action] closeComplaintAction failed:", error);
+    const message =
+      error instanceof Error ? error.message : "Failed to close complaint.";
+    return { success: false, error: message };
+  }
+}
+
+/**
+ * Server Action: Reopen a resolved complaint with mandatory reason (Phase 5.2).
+ * Transitions ticket from 'resolved' to 'reopened'.
+ * Enforces session authentication and submitter/admin authorization.
+ */
+export async function reopenComplaintAction(
+  complaintId: string,
+  reason: string,
+): Promise<ActionResponse<{ complaintId: string; status: string }>> {
+  try {
+    const userContext = await getAuthenticatedUser();
+    if (!userContext) {
+      return { success: false, error: "Authentication required to reopen a complaint." };
+    }
+
+    const parseResult = reopenComplaintSchema.safeParse({
+      complaintId,
+      reason,
+    });
+    if (!parseResult.success) {
+      return {
+        success: false,
+        error: parseResult.error.issues[0]?.message || "Invalid reopen input.",
+      };
+    }
+
+    const updated = await updateComplaintStatus(
+      {
+        complaintId: parseResult.data.complaintId,
+        nextStatus: "reopened",
+        note: parseResult.data.reason,
+      },
+      userContext,
+    );
+
+    revalidatePath(`/complaints/${complaintId}`);
+    revalidatePath("/complaints");
+    revalidatePath("/dashboard");
+    revalidatePath("/officer");
+    revalidatePath("/admin");
+
+    return {
+      success: true,
+      data: { complaintId: updated.complaintId, status: updated.status },
+    };
+  } catch (error: unknown) {
+    console.error("[AU-CTS Complaint Action] reopenComplaintAction failed:", error);
+    const message =
+      error instanceof Error ? error.message : "Failed to reopen complaint.";
+    return { success: false, error: message };
+  }
+}
+
 
 /**
  * Server Action: Submit feedback on a resolved complaint.

@@ -306,3 +306,31 @@ export const submitFeedbackSchema = z.object({
 });
 
 export type SubmitFeedbackInput = z.infer<typeof submitFeedbackSchema>;
+
+/**
+ * Validation schema for closing a resolved complaint (Phase 5.2).
+ */
+export const closeComplaintSchema = z.object({
+  complaintId: z.string().min(1, "Complaint ID is required"),
+  note: z
+    .string()
+    .trim()
+    .max(500, "Note must not exceed 500 characters")
+    .optional(),
+});
+
+export type CloseComplaintInput = z.infer<typeof closeComplaintSchema>;
+
+/**
+ * Validation schema for reopening a resolved complaint (Phase 5.2).
+ */
+export const reopenComplaintSchema = z.object({
+  complaintId: z.string().min(1, "Complaint ID is required"),
+  reason: z
+    .string()
+    .trim()
+    .min(10, "Reason must be at least 10 characters")
+    .max(1000, "Reason must not exceed 1000 characters"),
+});
+
+export type ReopenComplaintInput = z.infer<typeof reopenComplaintSchema>;
