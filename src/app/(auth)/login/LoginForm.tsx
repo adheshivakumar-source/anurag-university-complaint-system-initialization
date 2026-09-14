@@ -96,15 +96,15 @@ export function LoginForm({ redirectTo, initialError }: LoginFormProps) {
       if (code === "auth/invalid-credential" || code === "auth/user-not-found") {
         const check = await checkInstitutionalAccountExistsAction(data.email);
         if (!check.exists) {
-          const unregisteredTitle = "Account not registered";
+          const unregisteredTitle = "Account not found";
           const unregisteredMsg =
-            "We couldn't find an AU-CTS account with this Anurag University email. Please register first.";
+            "Account not found. Please register before signing in.";
           setServerError(unregisteredMsg);
           setIsUnregistered(true);
           toast.error(unregisteredMsg, {
             title: unregisteredTitle,
             action: {
-              label: "Go to Registration",
+              label: "Create an account",
               onClick: () => router.push("/register"),
             },
           });
@@ -134,10 +134,8 @@ export function LoginForm({ redirectTo, initialError }: LoginFormProps) {
 
 
   const onInvalid = (fieldErrors: typeof errors) => {
-    if (fieldErrors.email?.message?.includes("@anurag.edu.in")) {
-      toast.error("Please use your @anurag.edu.in email address.", {
-        title: "University email required",
-      });
+    if (fieldErrors.email?.message) {
+      toast.error(fieldErrors.email.message);
     }
   };
 
@@ -160,7 +158,7 @@ export function LoginForm({ redirectTo, initialError }: LoginFormProps) {
                 href="/register"
                 className="inline-flex items-center text-xs font-semibold text-[#6B1724] hover:underline underline-offset-2"
               >
-                Go to Registration &rarr;
+                Create an account &rarr;
               </Link>
             </div>
           )}
@@ -170,7 +168,7 @@ export function LoginForm({ redirectTo, initialError }: LoginFormProps) {
       <Input
         label="Institutional Email"
         type="email"
-        placeholder="you@anurag.edu.in"
+        placeholder="Enter your university email"
         autoComplete="email"
         required
         error={errors.email?.message}
@@ -213,12 +211,12 @@ export function LoginForm({ redirectTo, initialError }: LoginFormProps) {
       </Button>
 
       <div className="text-center text-xs text-[#64748B] pt-2">
-        New to Anurag University?{" "}
+        Don&apos;t have an account?{" "}
         <Link
           href="/register"
           className="font-semibold text-[#6B1724] hover:underline"
         >
-          Register an Account
+          Create an account
         </Link>
       </div>
 

@@ -143,14 +143,49 @@ export async function getOrCreateUserProfile(
     initialRole = params.requestedRole;
   }
 
+  // Derive safe neutral fallback for displayName based on role — never use email prefix as a human name
+  const neutralDisplayName =
+    initialRole === USER_ROLES.STUDENT
+      ? "Anurag Student"
+      : initialRole === USER_ROLES.FACULTY
+      ? "Faculty Member"
+      : initialRole === USER_ROLES.STAFF
+      ? "Staff Member"
+      : "University Member";
+
+  const resolvedDisplayName =
+    params.displayName && params.displayName.trim().length > 0
+      ? params.displayName.trim()
+      : neutralDisplayName;
+
+  // Auto-extract studentId from email local-part in uppercase ONLY if student role and studentId is empty
+  let resolvedStudentId: string | null = null;
+  if (initialRole === USER_ROLES.STUDENT) {
+    if (params.studentId && params.studentId.trim().length > 0) {
+      resolvedStudentId = params.studentId.trim();
+    } else if (params.email && params.email.includes("@")) {
+      const localPart = params.email.split("@")[0]?.trim();
+      if (localPart && localPart.length > 0) {
+        resolvedStudentId = localPart.toUpperCase();
+      }
+    }
+  }
+
+  const resolvedEmployeeId =
+    (initialRole === USER_ROLES.FACULTY || initialRole === USER_ROLES.STAFF) &&
+    params.employeeId &&
+    params.employeeId.trim().length > 0
+      ? params.employeeId.trim()
+      : null;
+
   const newProfileData = {
     uid,
-    displayName: params.displayName || params.email.split("@")[0] || "AU User",
+    displayName: resolvedDisplayName,
     email: params.email,
     role: initialRole,
     departmentId: null,
-    studentId: params.studentId || null,
-    employeeId: params.employeeId || null,
+    studentId: resolvedStudentId,
+    employeeId: resolvedEmployeeId,
     isActive: true,
     createdAt: FieldValue.serverTimestamp(),
     updatedAt: FieldValue.serverTimestamp(),

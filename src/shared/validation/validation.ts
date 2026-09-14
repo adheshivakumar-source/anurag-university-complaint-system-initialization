@@ -21,16 +21,18 @@ import {
 export const ANURAG_EMAIL_DOMAIN = "anurag.edu.in";
 
 /**
- * Normalizes and validates whether an email address belongs strictly to the
- * authorized Anurag University domain (@anurag.edu.in).
- *
- * Normalization & Invariants:
- * 1. Trim leading/trailing whitespace
- * 2. Lowercase all characters
- * 3. Validate non-empty local part and exact domain match
- * 4. Reject subdomains (e.g. sub.anurag.edu.in) and suffix attacks (e.g. anurag.edu.in.attacker.com)
+ * Standard Anurag University student roll number format:
+ * Exactly 10 alphanumeric characters starting with 2 digits (e.g. 26eg512d03, 21ag1a0501, 22eg105a01).
  */
-export function isAnuragEmail(email: string | null | undefined): boolean {
+export const ANURAG_ROLL_NUMBER_REGEX = /^[0-9]{2}[a-z0-9]{8}$/i;
+
+/**
+ * Validates whether an email address belongs strictly to the authorized
+ * Anurag University domain (@anurag.edu.in).
+ * Rejects subdomains (e.g. sub.anurag.edu.in), suffix attacks (e.g. anurag.edu.in.attacker.com),
+ * whitespace, and external domains (e.g. gmail.com, outlook.com).
+ */
+export function isAnuragInstitutionalEmail(email: string | null | undefined): boolean {
   if (!email || typeof email !== "string") {
     return false;
   }
@@ -57,19 +59,61 @@ export function isAnuragEmail(email: string | null | undefined): boolean {
 }
 
 /**
+ * Validates whether an email address belongs strictly to the authorized
+ * Anurag University domain (@anurag.edu.in) AND conforms to the Student roll-number format.
+ */
+export function isAnuragStudentEmail(email: string | null | undefined): boolean {
+  if (!isAnuragInstitutionalEmail(email)) {
+    return false;
+  }
+
+  const normalized = (email as string).trim().toLowerCase();
+  const [localPart] = normalized.split("@");
+
+  return ANURAG_ROLL_NUMBER_REGEX.test(localPart);
+}
+
+/**
+ * General institutional email validator for Anurag University accounts.
+ */
+export function isAnuragEmail(email: string | null | undefined): boolean {
+  return isAnuragInstitutionalEmail(email);
+}
+
+/**
  * Zod schema for Anurag University institutional email validation.
  */
-export const anuragEmailSchema = z
+export const anuragInstitutionalEmailSchema = z
   .string()
   .trim()
   .min(1, "Email address is required")
-  .email("Please enter a valid email address")
+  .email("Please enter a valid email address.")
   .refine(
-    (val) => isAnuragEmail(val),
+    (val) => isAnuragInstitutionalEmail(val),
     {
-      message: "Use your Anurag University email address ending with @anurag.edu.in.",
+      message: "Please enter a valid email address.",
     },
   );
+
+/**
+ * Zod schema for Anurag University student roll-number email validation.
+ */
+export const anuragStudentEmailSchema = z
+  .string()
+  .trim()
+  .min(1, "Email address is required")
+  .email("Please enter a valid email address.")
+  .refine(
+    (val) => isAnuragStudentEmail(val),
+    {
+      message: "Please enter a valid email address.",
+    },
+  );
+
+/**
+ * Default institutional email schema.
+ */
+export const anuragEmailSchema = anuragInstitutionalEmailSchema;
 
 /**
  * Allowed MIME types for complaint attachments.

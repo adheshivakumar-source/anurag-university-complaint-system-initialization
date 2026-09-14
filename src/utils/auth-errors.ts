@@ -49,8 +49,7 @@ export function mapAuthError(codeOrMessage: string | undefined | null): MappedAu
     raw.toLowerCase().includes("domain")
   ) {
     return {
-      title: "University email required",
-      message: "Please use your @anurag.edu.in email address.",
+      message: "Please enter a valid email address.",
     };
   }
 
@@ -58,12 +57,12 @@ export function mapAuthError(codeOrMessage: string | undefined | null): MappedAu
     case "auth/invalid-credential":
     case "auth/wrong-password":
       return {
-        message: "The email or password is incorrect.",
+        message: "Invalid email or password. Please try again.",
       };
 
     case "auth/user-not-found":
       return {
-        message: "No account was found with this email.",
+        message: "Account not found. Please register before signing in.",
       };
 
     case "auth/email-already-in-use":

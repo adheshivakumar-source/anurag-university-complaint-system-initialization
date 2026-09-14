@@ -14,7 +14,11 @@ import { redirect } from "next/navigation";
 import { getAdminAuth } from "@/server/firebase/admin";
 import { createSession, destroySession } from "./session";
 import { getOrCreateUserProfile } from "@/server/users/service";
-import { isAnuragEmail } from "@/shared/validation/validation";
+import {
+  isAnuragEmail,
+  isAnuragStudentEmail,
+  isAnuragInstitutionalEmail,
+} from "@/shared/validation/validation";
 import type { UserRole, SelfRegisterRole } from "@/shared/types";
 import { USER_ROLES, SELF_REGISTER_ROLES } from "@/shared/types";
 
@@ -33,16 +37,16 @@ export async function signInAction(
     const verifiedEmail = decoded.email || "";
 
     // Security Gate: Ensure email strictly belongs to Anurag University domain
-    if (!isAnuragEmail(verifiedEmail)) {
+    if (!isAnuragInstitutionalEmail(verifiedEmail)) {
       return {
-        error: "Only Anurag University (@anurag.edu.in) accounts are permitted.",
+        error: "Please enter a valid email address.",
       };
     }
 
     // Retrieve or initialize the user profile in Firestore
     const profile = await getOrCreateUserProfile(decoded.uid, {
       email: verifiedEmail,
-      displayName: decoded.name || decoded.email || undefined,
+      displayName: decoded.name || undefined,
     });
 
     // Check account status: Reject deactivated accounts
@@ -83,7 +87,7 @@ export async function registerAction(
     const verifiedEmail = decoded.email || "";
 
     // Security Gate: Ensure email strictly belongs to Anurag University domain
-    if (!isAnuragEmail(verifiedEmail)) {
+    if (!isAnuragInstitutionalEmail(verifiedEmail)) {
       // Clean up the unauthorized Firebase Auth account created by the client SDK
       try {
         await adminAuth.deleteUser(decoded.uid);
@@ -94,7 +98,7 @@ export async function registerAction(
         );
       }
       return {
-        error: "Only Anurag University (@anurag.edu.in) accounts are permitted.",
+        error: "Please enter a valid email address.",
       };
     }
 
@@ -104,16 +108,55 @@ export async function registerAction(
       validatedRole = payload.role;
     } else {
       console.warn(`[AU-CTS] Attempted self-registration with unauthorized role: ${payload.role}`);
+      try {
+        await adminAuth.deleteUser(decoded.uid);
+      } catch {
+        // ignore
+      }
       return { error: "Invalid role selected for self-registration." };
     }
+
+    // Role-specific Email & Identity Validation
+    if (validatedRole === USER_ROLES.STUDENT) {
+      if (!isAnuragStudentEmail(verifiedEmail)) {
+        try {
+          await adminAuth.deleteUser(decoded.uid);
+        } catch {
+          // ignore
+        }
+        return {
+          error: "Please enter a valid email address.",
+        };
+      }
+    }
+
+    // Determine studentId: if student role, require entered studentId or fallback to email local-part
+    let resolvedStudentId: string | null = null;
+    if (validatedRole === USER_ROLES.STUDENT) {
+      if (payload.studentId && payload.studentId.trim().length > 0) {
+        resolvedStudentId = payload.studentId.trim();
+      } else if (verifiedEmail.includes("@")) {
+        const localPart = verifiedEmail.split("@")[0].trim();
+        if (localPart.length > 0) {
+          resolvedStudentId = localPart.toUpperCase();
+        }
+      }
+    }
+
+    const resolvedEmployeeId =
+      (validatedRole === USER_ROLES.FACULTY || validatedRole === USER_ROLES.STAFF) &&
+      payload.employeeId &&
+      payload.employeeId.trim().length > 0
+        ? payload.employeeId.trim()
+        : null;
 
     // Initialize user profile in Firestore and assign custom claims
     await getOrCreateUserProfile(decoded.uid, {
       email: verifiedEmail,
       displayName: payload.displayName.trim(),
       requestedRole: validatedRole,
-      studentId: payload.studentId ? payload.studentId.trim() : null,
-      employeeId: payload.employeeId ? payload.employeeId.trim() : null,
+      studentId: resolvedStudentId,
+      employeeId: resolvedEmployeeId,
     });
 
     // Create session cookie

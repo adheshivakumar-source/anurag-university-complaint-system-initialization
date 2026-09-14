@@ -13,7 +13,10 @@ import { getClientAuth } from "@/client/firebase/client";
 import { registerAction } from "@/server/auth/actions";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { anuragEmailSchema } from "@/shared/validation/validation";
+import {
+  isAnuragStudentEmail,
+  isAnuragInstitutionalEmail,
+} from "@/shared/validation/validation";
 import { useToast } from "@/components/ui/Toast";
 import { mapAuthError, isNextRedirect } from "@/utils/auth-errors";
 import { USER_ROLES } from "@/shared/types";
@@ -23,9 +26,14 @@ const registerSchema = z
   .object({
     displayName: z
       .string()
+      .trim()
       .min(2, "Full name must be at least 2 characters")
       .max(100, "Name is too long"),
-    email: anuragEmailSchema,
+    email: z
+      .string()
+      .trim()
+      .min(1, "Email address is required")
+      .email("Please enter a valid email address."),
     role: z.enum(
       [USER_ROLES.STUDENT, USER_ROLES.FACULTY, USER_ROLES.STAFF] as const,
       { message: "Please select a valid role" },
@@ -39,9 +47,63 @@ const registerSchema = z
       .regex(/[0-9]/, "Password must include at least one number"),
     confirmPassword: z.string().min(1, "Please confirm your password"),
   })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords do not match",
-    path: ["confirmPassword"],
+  .superRefine((data, ctx) => {
+    // 1. Role-specific email & identifier validation
+    if (data.role === USER_ROLES.STUDENT) {
+      if (!isAnuragStudentEmail(data.email)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Please enter a valid email address.",
+          path: ["email"],
+        });
+      }
+      if (!data.studentId || data.studentId.trim().length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Student roll number is required",
+          path: ["studentId"],
+        });
+      }
+    } else if (data.role === USER_ROLES.FACULTY) {
+      if (!isAnuragInstitutionalEmail(data.email)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Please enter a valid email address.",
+          path: ["email"],
+        });
+      }
+      if (!data.employeeId || data.employeeId.trim().length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Faculty / Employee ID is required",
+          path: ["employeeId"],
+        });
+      }
+    } else if (data.role === USER_ROLES.STAFF) {
+      if (!isAnuragInstitutionalEmail(data.email)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Please enter a valid email address.",
+          path: ["email"],
+        });
+      }
+      if (!data.employeeId || data.employeeId.trim().length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Employee / Staff ID is required",
+          path: ["employeeId"],
+        });
+      }
+    }
+
+    // 2. Password matching
+    if (data.password !== data.confirmPassword) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Passwords do not match",
+        path: ["confirmPassword"],
+      });
+    }
   });
 
 type RegisterFormData = z.infer<typeof registerSchema>;
@@ -90,10 +152,10 @@ export function RegisterForm() {
         {
           displayName: data.displayName.trim(),
           role: data.role as UserRole,
-          studentId: data.role === USER_ROLES.STUDENT ? data.studentId : null,
+          studentId: data.role === USER_ROLES.STUDENT ? data.studentId?.trim() : null,
           employeeId:
             data.role === USER_ROLES.FACULTY || data.role === USER_ROLES.STAFF
-              ? data.employeeId
+              ? data.employeeId?.trim()
               : null,
         },
         "/dashboard",
@@ -147,10 +209,18 @@ export function RegisterForm() {
   };
 
   const onInvalid = (fieldErrors: typeof errors) => {
-    if (fieldErrors.email?.message?.includes("@anurag.edu.in")) {
-      toast.error("Please use your @anurag.edu.in email address.", {
-        title: "University email required",
-      });
+    if (fieldErrors.displayName?.message) {
+      toast.error(fieldErrors.displayName.message);
+    } else if (fieldErrors.email?.message) {
+      toast.error(fieldErrors.email.message);
+    } else if (fieldErrors.studentId?.message) {
+      toast.error(fieldErrors.studentId.message);
+    } else if (fieldErrors.employeeId?.message) {
+      toast.error(fieldErrors.employeeId.message);
+    } else if (fieldErrors.password?.message) {
+      toast.error(fieldErrors.password.message);
+    } else if (fieldErrors.confirmPassword?.message) {
+      toast.error(fieldErrors.confirmPassword.message);
     }
   };
 
@@ -173,21 +243,11 @@ export function RegisterForm() {
       <Input
         label="Full Name"
         type="text"
-        placeholder="e.g. Dr. Rajesh Kumar / Sneha Reddy"
+        placeholder="Enter your full name"
         autoComplete="name"
         required
         error={errors.displayName?.message}
         {...register("displayName")}
-      />
-
-      <Input
-        label="Institutional Email"
-        type="email"
-        placeholder="username@anurag.edu.in"
-        autoComplete="email"
-        required
-        error={errors.email?.message}
-        {...register("email")}
       />
 
       <div className="flex flex-col gap-1.5">
@@ -215,24 +275,46 @@ export function RegisterForm() {
 
       {selectedRole === USER_ROLES.STUDENT && (
         <Input
-          label="Student Roll / Registration ID"
+          label="Student Roll"
           type="text"
-          placeholder="e.g. 21AG1A0501"
+          placeholder="Enter your student roll number"
+          required
           error={errors.studentId?.message}
           {...register("studentId")}
         />
       )}
 
-      {(selectedRole === USER_ROLES.FACULTY ||
-        selectedRole === USER_ROLES.STAFF) && (
+      {selectedRole === USER_ROLES.FACULTY && (
         <Input
-          label="Employee / Staff ID"
+          label="Faculty / Employee ID"
           type="text"
-          placeholder="e.g. AU-EMP-408"
+          placeholder="Enter your faculty / employee ID"
+          required
           error={errors.employeeId?.message}
           {...register("employeeId")}
         />
       )}
+
+      {selectedRole === USER_ROLES.STAFF && (
+        <Input
+          label="Employee / Staff ID"
+          type="text"
+          placeholder="Enter your employee / staff ID"
+          required
+          error={errors.employeeId?.message}
+          {...register("employeeId")}
+        />
+      )}
+
+      <Input
+        label="Institutional Email"
+        type="email"
+        placeholder="Enter your university email"
+        autoComplete="email"
+        required
+        error={errors.email?.message}
+        {...register("email")}
+      />
 
       <Input
         label="Password"
