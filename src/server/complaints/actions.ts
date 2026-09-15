@@ -18,6 +18,7 @@ import {
   createComplaint,
   updateComplaintStatus,
   assignComplaint,
+  transferComplaintDepartment,
   submitComplaintFeedback,
   getComplaintById,
 } from "./service";
@@ -25,6 +26,9 @@ import {
   resolveComplaintSchema,
   closeComplaintSchema,
   reopenComplaintSchema,
+  rejectComplaintSchema,
+  markDuplicateSchema,
+  transferDepartmentSchema,
   ALLOWED_ATTACHMENT_MIME_TYPES,
   MAX_ATTACHMENT_SIZE_BYTES,
   type CreateComplaintInput,
@@ -34,9 +38,13 @@ import {
   type SubmitFeedbackInput,
   type CloseComplaintInput,
   type ReopenComplaintInput,
+  type RejectComplaintInput,
+  type MarkDuplicateInput,
+  type TransferDepartmentInput,
 } from "@/shared/validation/validation";
 import { USER_ROLES, type AttachmentRefDTO } from "@/shared/types";
 import { revalidatePath } from "next/cache";
+
 
 export interface ActionResponse<T = unknown> {
   success: boolean;
@@ -508,6 +516,176 @@ export async function getComplaintAction(
   } catch (error: unknown) {
     console.error("[AU-CTS Complaint Action] getComplaint failed:", error);
     const message = error instanceof Error ? error.message : "Failed to retrieve complaint.";
+    return { success: false, error: message };
+  }
+}
+
+/**
+ * Server Action: Reassign an officer to a complaint (Phase 5.5).
+ */
+export async function reassignComplaintAction(
+  input: AssignComplaintInput,
+): Promise<ActionResponse<{ complaintId: string; assignedTo: string | null }>> {
+  try {
+    const userContext = await getAuthenticatedUser();
+    if (!userContext) {
+      return { success: false, error: "Authentication required to reassign complaints." };
+    }
+
+    const updated = await assignComplaint(input, userContext);
+    revalidatePath(`/complaints/${input.complaintId}`);
+    revalidatePath("/officer");
+    revalidatePath("/admin");
+    revalidatePath("/admin/complaints");
+
+    return {
+      success: true,
+      data: { complaintId: updated.complaintId, assignedTo: updated.assignedTo },
+    };
+  } catch (error: unknown) {
+    console.error("[AU-CTS Complaint Action] reassignComplaintAction failed:", error);
+    const message = error instanceof Error ? error.message : "Failed to reassign complaint.";
+    return { success: false, error: message };
+  }
+}
+
+/**
+ * Server Action: Transfer a complaint to another department (Phase 5.5).
+ * Restricted to administrators only.
+ */
+export async function transferDepartmentAction(
+  input: TransferDepartmentInput,
+): Promise<ActionResponse<{ complaintId: string; departmentId: string }>> {
+  try {
+    const userContext = await getAuthenticatedUser();
+    if (!userContext) {
+      return { success: false, error: "Authentication required to transfer complaints." };
+    }
+
+    const updated = await transferComplaintDepartment(input, userContext);
+    revalidatePath(`/complaints/${input.complaintId}`);
+    revalidatePath("/officer");
+    revalidatePath("/admin");
+    revalidatePath("/admin/complaints");
+
+    return {
+      success: true,
+      data: { complaintId: updated.complaintId, departmentId: updated.departmentId },
+    };
+  } catch (error: unknown) {
+    console.error("[AU-CTS Complaint Action] transferDepartmentAction failed:", error);
+    const message = error instanceof Error ? error.message : "Failed to transfer complaint.";
+    return { success: false, error: message };
+  }
+}
+
+/**
+ * Server Action: Reject a complaint (Phase 5.5).
+ * Allowed from 'pending' or 'in_review' status.
+ */
+export async function rejectComplaintAction(
+  complaintId: string,
+  reason: string,
+): Promise<ActionResponse<{ complaintId: string; status: string }>> {
+  try {
+    const userContext = await getAuthenticatedUser();
+    if (!userContext) {
+      return { success: false, error: "Authentication required to reject complaints." };
+    }
+
+    const parseResult = rejectComplaintSchema.safeParse({
+      complaintId,
+      reason,
+    });
+    if (!parseResult.success) {
+      return {
+        success: false,
+        error: parseResult.error.issues[0]?.message || "Invalid rejection input.",
+      };
+    }
+
+    const updated = await updateComplaintStatus(
+      {
+        complaintId: parseResult.data.complaintId,
+        nextStatus: "rejected",
+        note: parseResult.data.reason,
+      },
+      userContext,
+    );
+
+    revalidatePath(`/complaints/${complaintId}`);
+    revalidatePath("/complaints");
+    revalidatePath("/dashboard");
+    revalidatePath("/officer");
+    revalidatePath("/admin");
+    revalidatePath("/admin/complaints");
+
+    return {
+      success: true,
+      data: { complaintId: updated.complaintId, status: updated.status },
+    };
+  } catch (error: unknown) {
+    console.error("[AU-CTS Complaint Action] rejectComplaintAction failed:", error);
+    const message = error instanceof Error ? error.message : "Failed to reject complaint.";
+    return { success: false, error: message };
+  }
+}
+
+/**
+ * Server Action: Mark a complaint as duplicate (Phase 5.5).
+ * Allowed from 'pending' status.
+ */
+export async function markDuplicateAction(
+  complaintId: string,
+  duplicateOf: string,
+  note?: string,
+): Promise<ActionResponse<{ complaintId: string; status: string; duplicateOf: string | null }>> {
+  try {
+    const userContext = await getAuthenticatedUser();
+    if (!userContext) {
+      return { success: false, error: "Authentication required to mark duplicate." };
+    }
+
+    const parseResult = markDuplicateSchema.safeParse({
+      complaintId,
+      duplicateOf,
+      note,
+    });
+    if (!parseResult.success) {
+      return {
+        success: false,
+        error: parseResult.error.issues[0]?.message || "Invalid duplicate input.",
+      };
+    }
+
+    const updated = await updateComplaintStatus(
+      {
+        complaintId: parseResult.data.complaintId,
+        nextStatus: "duplicate",
+        duplicateOf: parseResult.data.duplicateOf,
+        note: parseResult.data.note,
+      },
+      userContext,
+    );
+
+    revalidatePath(`/complaints/${complaintId}`);
+    revalidatePath("/complaints");
+    revalidatePath("/dashboard");
+    revalidatePath("/officer");
+    revalidatePath("/admin");
+    revalidatePath("/admin/complaints");
+
+    return {
+      success: true,
+      data: {
+        complaintId: updated.complaintId,
+        status: updated.status,
+        duplicateOf: updated.duplicateOf,
+      },
+    };
+  } catch (error: unknown) {
+    console.error("[AU-CTS Complaint Action] markDuplicateAction failed:", error);
+    const message = error instanceof Error ? error.message : "Failed to mark duplicate.";
     return { success: false, error: message };
   }
 }

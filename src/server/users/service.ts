@@ -369,6 +369,26 @@ export async function listAllUsers(filter?: {
   return users;
 }
 
+/**
+ * Lists all active department officers assigned to a specific department.
+ * Safe DTO serialization for client selection dropdowns.
+ */
+export async function listDepartmentOfficers(departmentId: string): Promise<UserProfileDTO[]> {
+  const db = getAdminFirestore();
+  const snapshot = await db
+    .collection(USERS_COLLECTION)
+    .where("role", "==", USER_ROLES.DEPARTMENT_OFFICER)
+    .where("departmentId", "==", departmentId)
+    .where("isActive", "==", true)
+    .get();
+
+  return snapshot.docs.map((doc) => {
+    const user = mapDocToUserProfile(doc.id, doc.data());
+    return serializeUserProfile(user);
+  });
+}
+
+
 // ── Admin User Governance Metrics ─────────────────────────────
 
 export interface AdminUserMetrics {

@@ -334,3 +334,51 @@ export const reopenComplaintSchema = z.object({
 });
 
 export type ReopenComplaintInput = z.infer<typeof reopenComplaintSchema>;
+
+/**
+ * Validation schema for rejecting a complaint (Phase 5.5).
+ */
+export const rejectComplaintSchema = z.object({
+  complaintId: z.string().min(1, "Complaint ID is required"),
+  reason: z
+    .string()
+    .trim()
+    .min(10, "Rejection reason must be at least 10 characters")
+    .max(1000, "Rejection reason must not exceed 1000 characters"),
+});
+
+export type RejectComplaintInput = z.infer<typeof rejectComplaintSchema>;
+
+/**
+ * Validation schema for marking a complaint as duplicate (Phase 5.5).
+ */
+export const markDuplicateSchema = z.object({
+  complaintId: z.string().min(1, "Complaint ID is required"),
+  duplicateOf: z
+    .string()
+    .trim()
+    .min(1, "Original complaint ID is required")
+    .max(50, "Complaint ID must not exceed 50 characters"),
+  note: z
+    .string()
+    .trim()
+    .max(500, "Note must not exceed 500 characters")
+    .optional(),
+});
+
+export type MarkDuplicateInput = z.infer<typeof markDuplicateSchema>;
+
+/**
+ * Validation schema for transferring a complaint to another department (Phase 5.5).
+ */
+export const transferDepartmentSchema = z.object({
+  complaintId: z.string().min(1, "Complaint ID is required"),
+  targetDepartmentId: z.string().min(1, "Target department ID is required"),
+  reason: z
+    .string()
+    .trim()
+    .min(10, "Transfer reason must be at least 10 characters")
+    .max(1000, "Transfer reason must not exceed 1000 characters"),
+});
+
+export type TransferDepartmentInput = z.infer<typeof transferDepartmentSchema>;

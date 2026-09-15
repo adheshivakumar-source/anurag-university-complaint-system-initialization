@@ -14,11 +14,13 @@ import {
   serializeComplaintToDTO,
   UnauthorizedComplaintAccessError,
 } from "@/server/complaints/service";
-import { getDepartmentInfo } from "@/server/complaints/routing";
+import { getDepartmentInfo, DEPARTMENT_CONFIGS } from "@/server/complaints/routing";
+import { listDepartmentOfficers } from "@/server/users/service";
 import {
   CATEGORY_LABELS,
   COMPLAINT_STATUSES,
   USER_ROLES,
+  TERMINAL_STATUSES,
   type ComplaintCategory,
   type AttachmentRefDTO,
 } from "@/shared/types";
@@ -30,7 +32,9 @@ import { StartReviewButton } from "./StartReviewButton";
 import { ResolveComplaintButton } from "./ResolveComplaintButton";
 import { CloseComplaintButton } from "./CloseComplaintButton";
 import { ReopenComplaintButton } from "./ReopenComplaintButton";
-
+import { ReassignComplaintButton } from "./ReassignComplaintButton";
+import { RejectComplaintButton } from "./RejectComplaintButton";
+import { MarkDuplicateButton } from "./MarkDuplicateButton";
 
 interface ComplaintDetailPageProps {
   params: Promise<{ id: string }>;
@@ -98,6 +102,29 @@ export default async function ComplaintDetailPage({
   const canCloseOrReopen =
     complaint.status === COMPLAINT_STATUSES.RESOLVED && (isSubmitter || isAdmin);
 
+  const canReassignOrTransfer =
+    (isAdmin || isDeptOfficer) &&
+    !TERMINAL_STATUSES.has(complaint.status) &&
+    complaint.status !== COMPLAINT_STATUSES.RESOLVED;
+
+  const canReject =
+    (isAdmin || isDeptOfficer) &&
+    (complaint.status === COMPLAINT_STATUSES.PENDING ||
+      complaint.status === COMPLAINT_STATUSES.IN_REVIEW);
+
+  const canMarkDuplicate =
+    (isAdmin || isDeptOfficer) &&
+    complaint.status === COMPLAINT_STATUSES.PENDING;
+
+  const departmentOfficers = canReassignOrTransfer
+    ? await listDepartmentOfficers(complaint.departmentId)
+    : [];
+
+  const allDepartments = Object.values(DEPARTMENT_CONFIGS).map((d) => ({
+    departmentId: d.departmentId,
+    departmentName: d.departmentName,
+  }));
+
   return (
     <div className="flex flex-col gap-6 max-w-6xl mx-auto">
       {/* Back navigation & Top Bar */}
@@ -124,7 +151,7 @@ export default async function ComplaintDetailPage({
           </span>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <PriorityBadge priority={complaint.priority} />
           <StatusBadge status={complaint.status} />
           {canStartReview && (
@@ -139,8 +166,25 @@ export default async function ComplaintDetailPage({
               <CloseComplaintButton complaintId={complaint.complaintId} />
             </>
           )}
+          {canReassignOrTransfer && (
+            <ReassignComplaintButton
+              complaintId={complaint.complaintId}
+              currentDepartmentId={complaint.departmentId}
+              currentAssignedTo={complaint.assignedTo}
+              isAdmin={isAdmin}
+              departmentOfficers={departmentOfficers}
+              allDepartments={allDepartments}
+            />
+          )}
+          {canMarkDuplicate && (
+            <MarkDuplicateButton complaintId={complaint.complaintId} />
+          )}
+          {canReject && (
+            <RejectComplaintButton complaintId={complaint.complaintId} />
+          )}
         </div>
       </div>
+
 
       {/* Main Dossier Grid */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">

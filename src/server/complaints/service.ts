@@ -14,7 +14,11 @@ import "server-only";
 
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { getAdminFirestore } from "@/server/firebase/admin";
-import { resolveDepartmentRouting } from "./routing";
+import {
+  resolveDepartmentRouting,
+  DEPARTMENT_CONFIGS,
+  type DepartmentInfo,
+} from "./routing";
 import {
   validateStatusTransition,
   generateComplaintId,
@@ -32,11 +36,13 @@ import {
   updateComplaintStatusSchema,
   assignComplaintSchema,
   submitFeedbackSchema,
+  transferDepartmentSchema,
   type CreateComplaintInput,
   type CreateComplaintFormData,
   type UpdateComplaintStatusInput,
   type AssignComplaintInput,
   type SubmitFeedbackInput,
+  type TransferDepartmentInput,
 } from "@/shared/validation/validation";
 import type {
   Complaint,
@@ -56,7 +62,9 @@ import {
   STATUS_LABELS,
   AUDIT_ACTIONS,
   USER_ROLES,
+  TERMINAL_STATUSES,
 } from "@/shared/types";
+
 
 const COMPLAINTS_COLLECTION = "complaints";
 const AUDIT_SUBCOLLECTION = "audit";
@@ -688,8 +696,31 @@ export async function updateComplaintStatus(
     } else if (valid.nextStatus === COMPLAINT_STATUSES.REJECTED) {
       auditAction = AUDIT_ACTIONS.COMPLAINT_REJECTED;
     } else if (valid.nextStatus === COMPLAINT_STATUSES.DUPLICATE) {
+      if (!valid.duplicateOf) {
+        throw new InvalidComplaintInputError("Original complaint ID is required to mark duplicate.");
+      }
+      if (valid.duplicateOf === valid.complaintId) {
+        throw new InvalidComplaintInputError("A complaint cannot be marked as a duplicate of itself.");
+      }
+      if (currentComplaint.isDuplicate || TERMINAL_STATUSES.has(currentComplaint.status)) {
+        throw new InvalidStatusTransitionError("Complaint is already in a terminal status.");
+      }
+
+      const targetDocRef = db.collection(COMPLAINTS_COLLECTION).doc(valid.duplicateOf);
+      const targetDoc = await transaction.get(targetDocRef);
+      if (!targetDoc.exists) {
+        throw new InvalidComplaintInputError(`Target complaint '${valid.duplicateOf}' does not exist.`);
+      }
+
+      const targetData = targetDoc.data() || {};
+      if (targetData.isDuplicate) {
+        throw new InvalidComplaintInputError(
+          `Target complaint '${valid.duplicateOf}' is already a duplicate. Link directly to original ticket '${targetData.duplicateOf}'.`,
+        );
+      }
+
       updates.isDuplicate = true;
-      if (valid.duplicateOf) updates.duplicateOf = valid.duplicateOf;
+      updates.duplicateOf = valid.duplicateOf;
       auditAction = AUDIT_ACTIONS.MARKED_DUPLICATE;
     } else if (valid.nextStatus === COMPLAINT_STATUSES.ESCALATED) {
       updates.escalationLevel = (currentComplaint.escalationLevel + 1) as 1 | 2 | 3;
@@ -767,6 +798,29 @@ export async function assignComplaint(
       );
     }
 
+    // Server-side revalidation of target officer at mutation time
+    const targetUserRef = db.collection("users").doc(valid.officerUid);
+    const targetUserDoc = await transaction.get(targetUserRef);
+    if (!targetUserDoc.exists) {
+      throw new InvalidComplaintInputError("Target officer does not exist.");
+    }
+    const targetUserData = targetUserDoc.data() || {};
+    if (targetUserData.isActive === false) {
+      throw new InvalidComplaintInputError("Cannot assign complaint to a deactivated officer.");
+    }
+    if (
+      targetUserData.role !== USER_ROLES.DEPARTMENT_OFFICER &&
+      targetUserData.role !== USER_ROLES.ADMIN
+    ) {
+      throw new InvalidComplaintInputError("Target user is not an authorized officer.");
+    }
+    if (
+      targetUserData.role === USER_ROLES.DEPARTMENT_OFFICER &&
+      targetUserData.departmentId !== currentComplaint.departmentId
+    ) {
+      throw new UnauthorizedComplaintAccessError("Officer does not belong to this department.");
+    }
+
     const updates: Record<string, unknown> = {
       assignedTo: valid.officerUid,
       assignedToName: valid.officerName,
@@ -802,6 +856,104 @@ export async function assignComplaint(
     });
   });
 }
+
+/**
+ * Transfers a complaint to a different university department (Phase 5.5).
+ * Strictly restricted to administrators.
+ */
+export async function transferComplaintDepartment(
+  params: TransferDepartmentInput,
+  userContext: AuthenticatedUserContext,
+): Promise<Complaint> {
+  const parseResult = transferDepartmentSchema.safeParse(params);
+  if (!parseResult.success) {
+    throw new InvalidComplaintInputError(
+      parseResult.error.issues[0]?.message || "Invalid transfer input.",
+    );
+  }
+  const valid = parseResult.data;
+
+  if (userContext.user.role !== USER_ROLES.ADMIN) {
+    throw new UnauthorizedComplaintAccessError(
+      "Only administrators can transfer complaints between departments.",
+    );
+  }
+
+  const targetEntry = Object.entries(DEPARTMENT_CONFIGS).find(
+    ([, config]) => config.departmentId === valid.targetDepartmentId,
+  );
+  if (!targetEntry) {
+    throw new InvalidComplaintInputError(
+      `Invalid target department: ${valid.targetDepartmentId}`,
+    );
+  }
+  const [targetCategory] = targetEntry as [ComplaintCategory, DepartmentInfo];
+
+  const db = getAdminFirestore();
+  const complaintRef = db.collection(COMPLAINTS_COLLECTION).doc(valid.complaintId);
+
+  return db.runTransaction(async (transaction) => {
+    const doc = await transaction.get(complaintRef);
+    if (!doc.exists) {
+      throw new ComplaintNotFoundError(valid.complaintId);
+    }
+
+    const currentData = doc.data() || {};
+    const currentComplaint = mapDocToComplaint(doc.id, currentData);
+
+    if (TERMINAL_STATUSES.has(currentComplaint.status)) {
+      throw new InvalidStatusTransitionError(
+        `Cannot transfer complaint in terminal status '${currentComplaint.status}'.`,
+      );
+    }
+
+    if (currentComplaint.departmentId === valid.targetDepartmentId) {
+      throw new InvalidComplaintInputError("Complaint is already in the target department.");
+    }
+
+    // Recalculate SLA from original submission date using canonical routing engine
+    const routing = resolveDepartmentRouting(
+      targetCategory,
+      currentComplaint.priority,
+      currentComplaint.submittedAt,
+    );
+
+    const updates: Record<string, unknown> = {
+      departmentId: valid.targetDepartmentId,
+      category: targetCategory,
+      assignedTo: null,
+      assignedToName: null,
+      assignedAt: null,
+      status: COMPLAINT_STATUSES.SUBMITTED,
+      slaDeadline: Timestamp.fromDate(routing.slaDeadline),
+      lastUpdatedAt: FieldValue.serverTimestamp(),
+    };
+
+    const auditRef = complaintRef.collection(AUDIT_SUBCOLLECTION).doc();
+    const auditData = {
+      auditId: auditRef.id,
+      complaintId: valid.complaintId,
+      actor: userContext.user.uid,
+      actorRole: userContext.user.role,
+      action: AUDIT_ACTIONS.STATUS_CHANGED,
+      timestamp: FieldValue.serverTimestamp(),
+      previousValue: currentComplaint.departmentId,
+      newValue: valid.targetDepartmentId,
+      note: `Transferred to ${routing.departmentName} by Administrator: ${valid.reason}`,
+    };
+
+    transaction.update(complaintRef, updates);
+    transaction.set(auditRef, auditData);
+
+    return mapDocToComplaint(valid.complaintId, {
+      ...currentData,
+      ...updates,
+      slaDeadline: routing.slaDeadline,
+      lastUpdatedAt: new Date(),
+    });
+  });
+}
+
 
 /**
  * Submits post-resolution feedback by the original submitter.
