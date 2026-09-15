@@ -37,12 +37,14 @@ import {
   assignComplaintSchema,
   submitFeedbackSchema,
   transferDepartmentSchema,
+  addComplaintNoteSchema,
   type CreateComplaintInput,
   type CreateComplaintFormData,
   type UpdateComplaintStatusInput,
   type AssignComplaintInput,
   type SubmitFeedbackInput,
   type TransferDepartmentInput,
+  type AddComplaintNoteInput,
 } from "@/shared/validation/validation";
 import type {
   Complaint,
@@ -615,6 +617,12 @@ export async function getSanitizedComplaintTimeline(
         title = "Feedback Submitted";
         description = event.note || "Submitter submitted satisfaction rating.";
         break;
+      case AUDIT_ACTIONS.INVESTIGATION_NOTE:
+        title = isSubmitter ? "Investigation Updated" : "Investigation Note";
+        description = isSubmitter
+          ? "Department officers updated internal investigation notes."
+          : (event.note || "Investigation progress note recorded.");
+        break;
       default:
         title = "Activity Logged";
         description = isSubmitter ? undefined : event.note;
@@ -723,6 +731,11 @@ export async function updateComplaintStatus(
       updates.duplicateOf = valid.duplicateOf;
       auditAction = AUDIT_ACTIONS.MARKED_DUPLICATE;
     } else if (valid.nextStatus === COMPLAINT_STATUSES.ESCALATED) {
+      if (currentComplaint.escalationLevel >= 3) {
+        throw new InvalidStatusTransitionError(
+          "Complaint has already reached the maximum escalation level (Level 3).",
+        );
+      }
       updates.escalationLevel = (currentComplaint.escalationLevel + 1) as 1 | 2 | 3;
       updates.escalatedAt = FieldValue.serverTimestamp();
       auditAction = AUDIT_ACTIONS.COMPLAINT_ESCALATED;
@@ -954,6 +967,88 @@ export async function transferComplaintDepartment(
   });
 }
 
+/**
+ * Adds an internal investigation progress note to a complaint (Phase 5.6).
+ * Permitted only on active, non-terminal complaints (pending, in_review, escalated, reopened).
+ * Does not alter complaint status.
+ */
+export async function addComplaintProgressNote(
+  params: AddComplaintNoteInput,
+  userContext: AuthenticatedUserContext,
+): Promise<AuditEvent> {
+  const parseResult = addComplaintNoteSchema.safeParse(params);
+  if (!parseResult.success) {
+    throw new InvalidComplaintInputError(
+      parseResult.error.issues[0]?.message || "Invalid note input.",
+    );
+  }
+  const valid = parseResult.data;
+  const { user } = userContext;
+  const isAdmin = user.role === USER_ROLES.ADMIN;
+  const isOfficer = user.role === USER_ROLES.DEPARTMENT_OFFICER;
+
+  if (!isAdmin && !isOfficer) {
+    throw new UnauthorizedComplaintAccessError(
+      "Only administrators and department officers can log progress notes.",
+    );
+  }
+
+  const db = getAdminFirestore();
+  const complaintRef = db.collection(COMPLAINTS_COLLECTION).doc(valid.complaintId);
+
+  return db.runTransaction(async (transaction) => {
+    const doc = await transaction.get(complaintRef);
+    if (!doc.exists) {
+      throw new ComplaintNotFoundError(valid.complaintId);
+    }
+
+    const currentComplaint = mapDocToComplaint(doc.id, doc.data() || {});
+
+    if (
+      isOfficer &&
+      user.departmentId !== currentComplaint.departmentId &&
+      user.uid !== currentComplaint.assignedTo
+    ) {
+      throw new UnauthorizedComplaintAccessError(
+        "Officers cannot add notes to complaints outside their department.",
+      );
+    }
+
+    const ACTIVE_NOTE_STATUSES = new Set<ComplaintStatus>([
+      COMPLAINT_STATUSES.PENDING,
+      COMPLAINT_STATUSES.IN_REVIEW,
+      COMPLAINT_STATUSES.ESCALATED,
+      COMPLAINT_STATUSES.REOPENED,
+    ]);
+
+    if (!ACTIVE_NOTE_STATUSES.has(currentComplaint.status)) {
+      throw new InvalidStatusTransitionError(
+        `Cannot add progress notes to a complaint in '${currentComplaint.status}' status.`,
+      );
+    }
+
+    const auditRef = complaintRef.collection(AUDIT_SUBCOLLECTION).doc();
+    const auditData = {
+      auditId: auditRef.id,
+      complaintId: valid.complaintId,
+      actor: user.uid,
+      actorRole: user.role,
+      action: AUDIT_ACTIONS.INVESTIGATION_NOTE,
+      timestamp: FieldValue.serverTimestamp(),
+      note: valid.note,
+    };
+
+    transaction.update(complaintRef, {
+      lastUpdatedAt: FieldValue.serverTimestamp(),
+    });
+    transaction.set(auditRef, auditData);
+
+    return mapDocToAuditEvent(auditRef.id, valid.complaintId, {
+      ...auditData,
+      timestamp: new Date(),
+    });
+  });
+}
 
 /**
  * Submits post-resolution feedback by the original submitter.

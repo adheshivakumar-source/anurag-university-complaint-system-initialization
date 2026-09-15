@@ -35,6 +35,8 @@ import { ReopenComplaintButton } from "./ReopenComplaintButton";
 import { ReassignComplaintButton } from "./ReassignComplaintButton";
 import { RejectComplaintButton } from "./RejectComplaintButton";
 import { MarkDuplicateButton } from "./MarkDuplicateButton";
+import { EscalateComplaintButton } from "./EscalateComplaintButton";
+import { AddProgressNoteButton } from "./AddProgressNoteButton";
 
 interface ComplaintDetailPageProps {
   params: Promise<{ id: string }>;
@@ -116,6 +118,20 @@ export default async function ComplaintDetailPage({
     (isAdmin || isDeptOfficer) &&
     complaint.status === COMPLAINT_STATUSES.PENDING;
 
+  const canEscalate =
+    (isAdmin || isDeptOfficer) &&
+    complaint.escalationLevel < 3 &&
+    (complaint.status === COMPLAINT_STATUSES.PENDING ||
+      complaint.status === COMPLAINT_STATUSES.IN_REVIEW ||
+      complaint.status === COMPLAINT_STATUSES.REOPENED);
+
+  const canAddNote =
+    (isAdmin || isDeptOfficer) &&
+    (complaint.status === COMPLAINT_STATUSES.PENDING ||
+      complaint.status === COMPLAINT_STATUSES.IN_REVIEW ||
+      complaint.status === COMPLAINT_STATUSES.ESCALATED ||
+      complaint.status === COMPLAINT_STATUSES.REOPENED);
+
   const departmentOfficers = canReassignOrTransfer
     ? await listDepartmentOfficers(complaint.departmentId)
     : [];
@@ -165,6 +181,15 @@ export default async function ComplaintDetailPage({
               <ReopenComplaintButton complaintId={complaint.complaintId} />
               <CloseComplaintButton complaintId={complaint.complaintId} />
             </>
+          )}
+          {canAddNote && (
+            <AddProgressNoteButton complaintId={complaint.complaintId} />
+          )}
+          {canEscalate && (
+            <EscalateComplaintButton
+              complaintId={complaint.complaintId}
+              currentEscalationLevel={complaint.escalationLevel}
+            />
           )}
           {canReassignOrTransfer && (
             <ReassignComplaintButton

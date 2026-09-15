@@ -19,6 +19,7 @@ import {
   updateComplaintStatus,
   assignComplaint,
   transferComplaintDepartment,
+  addComplaintProgressNote,
   submitComplaintFeedback,
   getComplaintById,
 } from "./service";
@@ -29,6 +30,8 @@ import {
   rejectComplaintSchema,
   markDuplicateSchema,
   transferDepartmentSchema,
+  escalateComplaintSchema,
+  addComplaintNoteSchema,
   ALLOWED_ATTACHMENT_MIME_TYPES,
   MAX_ATTACHMENT_SIZE_BYTES,
   type CreateComplaintInput,
@@ -41,6 +44,8 @@ import {
   type RejectComplaintInput,
   type MarkDuplicateInput,
   type TransferDepartmentInput,
+  type EscalateComplaintInput,
+  type AddComplaintNoteInput,
 } from "@/shared/validation/validation";
 import { USER_ROLES, type AttachmentRefDTO } from "@/shared/types";
 import { revalidatePath } from "next/cache";
@@ -686,6 +691,108 @@ export async function markDuplicateAction(
   } catch (error: unknown) {
     console.error("[AU-CTS Complaint Action] markDuplicateAction failed:", error);
     const message = error instanceof Error ? error.message : "Failed to mark duplicate.";
+    return { success: false, error: message };
+  }
+}
+
+/**
+ * Server Action: Escalate a complaint (Phase 5.6).
+ * Permitted from 'pending', 'in_review', or 'reopened' status for Admin and Department Officers.
+ */
+export async function escalateComplaintAction(
+  complaintId: string,
+  reason: string,
+): Promise<ActionResponse<{ complaintId: string; status: string; escalationLevel: number }>> {
+  try {
+    const userContext = await getAuthenticatedUser();
+    if (!userContext) {
+      return { success: false, error: "Authentication required to escalate complaints." };
+    }
+
+    const parseResult = escalateComplaintSchema.safeParse({
+      complaintId,
+      reason,
+    });
+    if (!parseResult.success) {
+      return {
+        success: false,
+        error: parseResult.error.issues[0]?.message || "Invalid escalation input.",
+      };
+    }
+
+    const updated = await updateComplaintStatus(
+      {
+        complaintId: parseResult.data.complaintId,
+        nextStatus: "escalated",
+        note: parseResult.data.reason,
+      },
+      userContext,
+    );
+
+    revalidatePath(`/complaints/${complaintId}`);
+    revalidatePath("/complaints");
+    revalidatePath("/dashboard");
+    revalidatePath("/officer");
+    revalidatePath("/admin");
+    revalidatePath("/admin/complaints");
+
+    return {
+      success: true,
+      data: {
+        complaintId: updated.complaintId,
+        status: updated.status,
+        escalationLevel: updated.escalationLevel,
+      },
+    };
+  } catch (error: unknown) {
+    console.error("[AU-CTS Complaint Action] escalateComplaintAction failed:", error);
+    const message = error instanceof Error ? error.message : "Failed to escalate complaint.";
+    return { success: false, error: message };
+  }
+}
+
+/**
+ * Server Action: Add an internal investigation progress note (Phase 5.6).
+ * Permitted for Admin and Department Officers on active complaints.
+ */
+export async function addComplaintNoteAction(
+  complaintId: string,
+  note: string,
+): Promise<ActionResponse<{ complaintId: string; auditId: string }>> {
+  try {
+    const userContext = await getAuthenticatedUser();
+    if (!userContext) {
+      return { success: false, error: "Authentication required to add investigation notes." };
+    }
+
+    const parseResult = addComplaintNoteSchema.safeParse({
+      complaintId,
+      note,
+    });
+    if (!parseResult.success) {
+      return {
+        success: false,
+        error: parseResult.error.issues[0]?.message || "Invalid note input.",
+      };
+    }
+
+    const auditEvent = await addComplaintProgressNote(
+      parseResult.data,
+      userContext,
+    );
+
+    revalidatePath(`/complaints/${complaintId}`);
+
+    return {
+      success: true,
+      data: {
+        complaintId: auditEvent.complaintId,
+        auditId: auditEvent.auditId,
+      },
+    };
+  } catch (error: unknown) {
+    console.error("[AU-CTS Complaint Action] addComplaintNoteAction failed:", error);
+    const message = error instanceof Error ? error.message : "Failed to add investigation note.";
     return { success: false, error: message };
   }
 }

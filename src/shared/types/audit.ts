@@ -23,6 +23,7 @@ export const AUDIT_ACTIONS = {
   MARKED_DUPLICATE: "marked_duplicate",
   ATTACHMENT_ADDED: "attachment_added",
   FEEDBACK_SUBMITTED: "feedback_submitted",
+  INVESTIGATION_NOTE: "investigation_note",
 } as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[keyof typeof AUDIT_ACTIONS];

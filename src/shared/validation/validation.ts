@@ -382,3 +382,31 @@ export const transferDepartmentSchema = z.object({
 });
 
 export type TransferDepartmentInput = z.infer<typeof transferDepartmentSchema>;
+
+/**
+ * Validation schema for escalating a complaint (Phase 5.6).
+ */
+export const escalateComplaintSchema = z.object({
+  complaintId: z.string().min(1, "Complaint ID is required"),
+  reason: z
+    .string()
+    .trim()
+    .min(10, "Escalation reason must be at least 10 characters")
+    .max(1000, "Escalation reason must not exceed 1000 characters"),
+});
+
+export type EscalateComplaintInput = z.infer<typeof escalateComplaintSchema>;
+
+/**
+ * Validation schema for logging an internal investigation progress note (Phase 5.6).
+ */
+export const addComplaintNoteSchema = z.object({
+  complaintId: z.string().min(1, "Complaint ID is required"),
+  note: z
+    .string()
+    .trim()
+    .min(5, "Progress note must be at least 5 characters")
+    .max(1000, "Progress note must not exceed 1000 characters"),
+});
+
+export type AddComplaintNoteInput = z.infer<typeof addComplaintNoteSchema>;
