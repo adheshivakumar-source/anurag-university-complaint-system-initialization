@@ -73,7 +73,7 @@ export default async function AdminDashboardPage() {
         </div>
 
         <div className="flex items-center gap-3">
-          <Link href="/complaints">
+          <Link href="/admin/complaints">
             <Button variant="secondary">Browse Grievances</Button>
           </Link>
           <Link href="/admin/users">
@@ -306,10 +306,10 @@ export default async function AdminDashboardPage() {
             <CardHeader className="flex items-center justify-between">
               <CardTitle>Recent Institutional Grievances</CardTitle>
               <Link
-                href="/complaints"
+                href="/admin/complaints"
                 className="text-xs font-semibold text-[#6B1724] hover:underline"
               >
-                View Full Dossier →
+                View All Grievances →
               </Link>
             </CardHeader>
             <CardContent className="p-0">
@@ -402,7 +402,7 @@ export default async function AdminDashboardPage() {
                   Search, filter, and inspect complaints across all university operational departments.
                 </p>
                 <div className="pt-1">
-                  <Link href="/complaints">
+                  <Link href="/admin/complaints">
                     <Button variant="secondary" size="sm">
                       Open Complaint Portal →
                     </Button>

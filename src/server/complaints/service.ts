@@ -463,13 +463,21 @@ export async function listDepartmentComplaints(
 
 /**
  * Lists all complaints with administrative filters.
+ * Restricted strictly to administrator sessions.
  */
-export async function listAllComplaints(filters?: {
-  status?: ComplaintStatus;
-  category?: ComplaintCategory;
-  departmentId?: string;
-  limit?: number;
-}): Promise<Complaint[]> {
+export async function listAllComplaints(
+  userContext: AuthenticatedUserContext,
+  filters?: {
+    status?: ComplaintStatus;
+    category?: ComplaintCategory;
+    departmentId?: string;
+    limit?: number;
+  },
+): Promise<ComplaintDTO[]> {
+  if (userContext.user.role !== USER_ROLES.ADMIN) {
+    throw new UnauthorizedComplaintAccessError("Only administrators can view institutional complaints.");
+  }
+
   const db = getAdminFirestore();
   let query: FirebaseFirestore.Query = db.collection(COMPLAINTS_COLLECTION);
 
@@ -483,10 +491,13 @@ export async function listAllComplaints(filters?: {
     query = query.where("departmentId", "==", filters.departmentId);
   }
 
-  query = query.orderBy("createdAt", "desc").limit(filters?.limit ?? 50);
+  query = query.orderBy("createdAt", "desc").limit(filters?.limit ?? 100);
 
   const snapshot = await query.get();
-  return snapshot.docs.map((doc) => mapDocToComplaint(doc.id, doc.data()));
+  return snapshot.docs.map((doc) => {
+    const complaint = mapDocToComplaint(doc.id, doc.data());
+    return serializeComplaintToDTO(complaint);
+  });
 }
 
 /**
